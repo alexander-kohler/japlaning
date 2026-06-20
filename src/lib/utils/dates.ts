@@ -1,4 +1,5 @@
 const DAY_FORMAT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+const MONTH_FORMAT = new Intl.DateTimeFormat('en-GB', { month: 'short' });
 
 export function toIsoDate(date: Date): string {
 	const y = date.getFullYear();
@@ -14,6 +15,25 @@ export function parseIsoDate(iso: string): Date {
 
 export function formatDay(iso: string): string {
 	return DAY_FORMAT.format(parseIsoDate(iso));
+}
+
+/** Day + month on the first date; month only when the month changes; day number in between. */
+export function formatTimelineDayLabel(iso: string, previousIso: string | null): string {
+	const date = parseIsoDate(iso);
+
+	if (!previousIso) {
+		return DAY_FORMAT.format(date);
+	}
+
+	const previous = parseIsoDate(previousIso);
+	if (
+		date.getMonth() !== previous.getMonth() ||
+		date.getFullYear() !== previous.getFullYear()
+	) {
+		return MONTH_FORMAT.format(date);
+	}
+
+	return String(date.getDate());
 }
 
 export function formatRange(start: string, end: string): string {

@@ -2,8 +2,9 @@
 	import type { CalendarLayout } from '$lib/types';
 	import type { PlannerStore } from '$lib/planner.svelte';
 	import { formatRange } from '$lib/utils/dates';
-	import { accommodationGridSpan } from '$lib/utils/timeline';
+	import { accommodationGridSpan, carGridSpan } from '$lib/utils/timeline';
 	import AccommodationCard from './AccommodationCard.svelte';
+	import CarCard from './CarCard.svelte';
 	import ItemForm from './ItemForm.svelte';
 
 	type Props = {
@@ -15,9 +16,14 @@
 	let { store, layout, rowOffset }: Props = $props();
 
 	let editingAccommodationId = $state<string | null>(null);
+	let editingCarId = $state<string | null>(null);
 
 	const sortedAccommodations = $derived(
 		[...store.data.accommodations].sort((a, b) => a.checkIn.localeCompare(b.checkIn))
+	);
+
+	const sortedCars = $derived(
+		[...store.data.cars].sort((a, b) => a.pickup.localeCompare(b.pickup))
 	);
 
 	function getAccommodationInitial(id: string): Record<string, string> {
@@ -33,6 +39,21 @@
 			checkOut: values.checkOut
 		});
 		editingAccommodationId = null;
+	}
+
+	function getCarInitial(id: string): Record<string, string> {
+		const car = store.data.cars.find((c) => c.id === id);
+		if (!car) return {};
+		return { name: car.name, pickup: car.pickup, dropoff: car.dropoff };
+	}
+
+	function handleCarEditSubmit(id: string, values: Record<string, string>) {
+		store.updateCar(id, {
+			name: values.name,
+			pickup: values.pickup,
+			dropoff: values.dropoff
+		});
+		editingCarId = null;
 	}
 </script>
 
@@ -64,6 +85,33 @@
 					{accommodation}
 					onedit={() => (editingAccommodationId = accommodation.id)}
 					ondelete={() => store.removeAccommodation(accommodation.id)}
+				/>
+			{/if}
+		</div>
+	{/if}
+{/each}
+
+{#each sortedCars as car (car.id)}
+	{@const span = carGridSpan(car, layout)}
+	{#if span}
+		<div
+			class="z-20 flex justify-end px-2"
+			style="grid-row: {rowOffset + span.startRow} / span {span.rowSpan}; grid-column: 2"
+		>
+			{#if editingCarId === car.id}
+				{#key car.id}
+					<ItemForm
+						type="car"
+						initial={getCarInitial(car.id)}
+						onsubmit={(v) => handleCarEditSubmit(car.id, v)}
+						oncancel={() => (editingCarId = null)}
+					/>
+				{/key}
+			{:else}
+				<CarCard
+					{car}
+					onedit={() => (editingCarId = car.id)}
+					ondelete={() => store.removeCar(car.id)}
 				/>
 			{/if}
 		</div>

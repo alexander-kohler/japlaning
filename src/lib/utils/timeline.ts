@@ -4,21 +4,38 @@ import type {
 	CalendarDay,
 	CalendarLayout,
 	AccommodationGridSpan,
+	Car,
 	GapRange,
 	PlannerData,
 	TransitionDay
 } from '$lib/types';
 import { compareDates, daysBetween } from './dates';
 
-export function buildCalendarLayout(accommodations: Accommodation[]): CalendarLayout {
-	const sorted = [...accommodations].sort((a, b) => compareDates(a.checkIn, b.checkIn));
-	if (sorted.length === 0) {
+function calendarBounds(
+	accommodations: Accommodation[],
+	cars: Car[]
+): { start: string; end: string } | null {
+	const ranges = [
+		...accommodations.map((a) => ({ start: a.checkIn, end: a.checkOut })),
+		...cars.map((c) => ({ start: c.pickup, end: c.dropoff }))
+	];
+	if (ranges.length === 0) return null;
+
+	const starts = ranges.map((r) => r.start).sort(compareDates);
+	const ends = ranges.map((r) => r.end).sort(compareDates);
+	return { start: starts[0], end: ends[ends.length - 1] };
+}
+
+export function buildCalendarLayout(
+	accommodations: Accommodation[],
+	cars: Car[] = []
+): CalendarLayout {
+	const bounds = calendarBounds(accommodations, cars);
+	if (!bounds) {
 		return { days: [], totalRows: 0 };
 	}
 
-	const calendarStart = sorted[0].checkIn;
-	const calendarEnd = sorted[sorted.length - 1].checkOut;
-	const dates = daysBetween(calendarStart, calendarEnd);
+	const dates = daysBetween(bounds.start, bounds.end);
 
 	const days: CalendarDay[] = dates.map((date, index) => ({
 		date,
@@ -44,6 +61,17 @@ export function accommodationGridSpan(
 	return {
 		startRow: checkInDay.gridRowBottom,
 		rowSpan: checkOutDay.gridRowTop - checkInDay.gridRowBottom + 1
+	};
+}
+
+export function carGridSpan(car: Car, layout: CalendarLayout): AccommodationGridSpan | null {
+	const pickupDay = dayForDate(layout, car.pickup);
+	const dropoffDay = dayForDate(layout, car.dropoff);
+	if (!pickupDay || !dropoffDay) return null;
+
+	return {
+		startRow: pickupDay.gridRowBottom,
+		rowSpan: dropoffDay.gridRowTop - pickupDay.gridRowBottom + 1
 	};
 }
 
@@ -302,7 +330,11 @@ export function migratePlannerData(raw: unknown): PlannerData {
 		const activities = data.activities as Activity[];
 
 		if (activities.every((a) => a.accommodationId || a.betweenStays)) {
-			return { accommodations, activities };
+			return {
+				accommodations,
+				cars: Array.isArray(data.cars) ? (data.cars as Car[]) : [],
+				activities
+			};
 		}
 	}
 
@@ -335,5 +367,5 @@ export function migratePlannerData(raw: unknown): PlannerData {
 		};
 	});
 
-	return { accommodations, activities };
+	return { accommodations, cars: [], activities };
 }

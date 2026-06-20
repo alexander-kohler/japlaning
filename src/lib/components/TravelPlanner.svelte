@@ -8,6 +8,7 @@
 	const store = new PlannerStore();
 
 	let addingAccommodation = $state(false);
+	let addingCar = $state(false);
 
 	const rowOffset = 1;
 	const gridRowCount = $derived(rowOffset + store.totalRows);
@@ -20,6 +21,15 @@
 		});
 		addingAccommodation = false;
 	}
+
+	function handleAddCar(values: Record<string, string>) {
+		store.addCar({
+			name: values.name,
+			pickup: values.pickup,
+			dropoff: values.dropoff
+		});
+		addingCar = false;
+	}
 </script>
 
 <div class="space-y-4">
@@ -31,6 +41,13 @@
 		>
 			+ Add accommodation
 		</button>
+		<button
+			type="button"
+			class="rounded-lg bg-slate-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-600"
+			onclick={() => (addingCar = !addingCar)}
+		>
+			+ Add car
+		</button>
 	</div>
 
 	{#if addingAccommodation}
@@ -41,9 +58,13 @@
 		/>
 	{/if}
 
+	{#if addingCar}
+		<ItemForm type="car" onsubmit={handleAddCar} oncancel={() => (addingCar = false)} />
+	{/if}
+
 	{#if store.calendarLayout.days.length === 0}
 		<p class="rounded-lg border border-dashed border-slate-300 p-8 text-center text-slate-500">
-			Add an accommodation to start planning your trip.
+			Add an accommodation or car to start planning your trip.
 		</p>
 	{:else}
 		<div

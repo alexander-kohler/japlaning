@@ -1,4 +1,4 @@
-import type { Accommodation, Activity, PlannerData } from '$lib/types';
+import type { Accommodation, Activity, Car, PlannerData } from '$lib/types';
 import { generateId } from '$lib/utils/dates';
 import {
 	buildCalendarLayout,
@@ -11,7 +11,7 @@ import {
 
 const STORAGE_KEY = 'reiseplaner-data';
 const STORAGE_VERSION_KEY = 'reiseplaner-data-version';
-const STORAGE_VERSION = 4;
+const STORAGE_VERSION = 5;
 
 export function createDemoData(): PlannerData {
 	const hotelA = generateId();
@@ -37,6 +37,14 @@ export function createDemoData(): PlannerData {
 				name: 'Berghütte',
 				checkIn: '2026-09-17',
 				checkOut: '2026-09-19'
+			}
+		],
+		cars: [
+			{
+				id: generateId(),
+				name: 'Rental car',
+				pickup: '2026-09-10',
+				dropoff: '2026-09-17'
 			}
 		],
 		activities: [
@@ -89,9 +97,11 @@ function saveToStorage(data: PlannerData) {
 }
 
 export class PlannerStore {
-	data = $state<PlannerData>({ accommodations: [], activities: [] });
+	data = $state<PlannerData>({ accommodations: [], cars: [], activities: [] });
 
-	calendarLayout = $derived(buildCalendarLayout(this.data.accommodations));
+	calendarLayout = $derived(
+		buildCalendarLayout(this.data.accommodations, this.data.cars)
+	);
 	gapRanges = $derived(buildGapRanges(this.data.accommodations, this.calendarLayout));
 	transitionDays = $derived(buildTransitionDays(this.data.accommodations, this.calendarLayout));
 	totalRows = $derived(this.calendarLayout.totalRows);
@@ -143,6 +153,21 @@ export class PlannerStore {
 				a.betweenStays?.afterAccommodationId !== id &&
 				a.betweenStays?.beforeAccommodationId !== id
 		);
+		this.persist();
+	}
+
+	addCar(entry: Omit<Car, 'id'>) {
+		this.data.cars = [...this.data.cars, { ...entry, id: generateId() }];
+		this.persist();
+	}
+
+	updateCar(id: string, entry: Omit<Car, 'id'>) {
+		this.data.cars = this.data.cars.map((c) => (c.id === id ? { ...entry, id } : c));
+		this.persist();
+	}
+
+	removeCar(id: string) {
+		this.data.cars = this.data.cars.filter((c) => c.id !== id);
 		this.persist();
 	}
 

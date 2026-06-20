@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Accommodation } from '$lib/types';
 
-	type FormType = 'accommodation' | 'activity' | 'between-activity';
+	type FormType = 'accommodation' | 'car' | 'activity' | 'between-activity';
 
 	type Props = {
 		type: FormType;
@@ -24,6 +24,8 @@
 	let name = $state(initial.name ?? '');
 	let checkIn = $state(initial.checkIn ?? '');
 	let checkOut = $state(initial.checkOut ?? '');
+	let pickup = $state(initial.pickup ?? '');
+	let dropoff = $state(initial.dropoff ?? '');
 	let accommodationId = $state(initial.accommodationId ?? accommodations[0]?.id ?? '');
 	let activityDate = $state(initial.activityDate ?? '');
 	let error = $state('');
@@ -46,6 +48,20 @@
 				return;
 			}
 			onsubmit({ name: name.trim(), checkIn, checkOut });
+		} else if (type === 'car') {
+			if (!name.trim()) {
+				error = 'Please enter a name.';
+				return;
+			}
+			if (!pickup || !dropoff) {
+				error = 'Please select pick-up and drop-off dates.';
+				return;
+			}
+			if (dropoff < pickup) {
+				error = 'Drop-off must be on or after pick-up.';
+				return;
+			}
+			onsubmit({ name: name.trim(), pickup, dropoff });
 		} else if (type === 'between-activity') {
 			if (!name.trim()) {
 				error = 'Please enter a name.';
@@ -94,6 +110,24 @@
 		<label class="flex flex-col gap-1 text-xs text-slate-600">
 			Check-out
 			<input type="date" bind:value={checkOut} class="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+		</label>
+	{:else if type === 'car'}
+		<label class="flex min-w-40 flex-1 flex-col gap-1 text-xs text-slate-600">
+			Name
+			<input
+				type="text"
+				bind:value={name}
+				placeholder="Rental car"
+				class="rounded border border-slate-300 px-2 py-1.5 text-sm"
+			/>
+		</label>
+		<label class="flex flex-col gap-1 text-xs text-slate-600">
+			Pick-up
+			<input type="date" bind:value={pickup} class="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+		</label>
+		<label class="flex flex-col gap-1 text-xs text-slate-600">
+			Drop-off
+			<input type="date" bind:value={dropoff} class="rounded border border-slate-300 px-2 py-1.5 text-sm" />
 		</label>
 	{:else}
 		<label class="flex min-w-40 flex-1 flex-col gap-1 text-xs text-slate-600">

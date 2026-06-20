@@ -5,6 +5,13 @@ export type Accommodation = {
 	checkOut: string;
 };
 
+export type Car = {
+	id: string;
+	name: string;
+	pickup: string;
+	dropoff: string;
+};
+
 export type Activity = {
 	id: string;
 	name: string;
@@ -18,6 +25,7 @@ export type Activity = {
 
 export type PlannerData = {
 	accommodations: Accommodation[];
+	cars: Car[];
 	activities: Activity[];
 };
 
