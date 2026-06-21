@@ -59,7 +59,7 @@
 
 {#each layout.days as day (day.date)}
 	<div
-		class="border-b border-slate-200"
+		class="border-b border-l border-slate-200"
 		style="grid-row: {rowOffset + day.gridRowTop} / span 2; grid-column: 2"
 	></div>
 {/each}
@@ -124,10 +124,10 @@
 		style="grid-row: {rowOffset + gap.startRow} / span {gap.rowSpan}; grid-column: 2"
 	>
 		<div
-			class="flex h-full flex-col justify-center rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-slate-500"
+			class="flex h-full flex-col justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-2 text-slate-400"
 		>
-			<span class="text-sm font-medium">No accommodation</span>
-			<span class="mt-0.5 text-xs">{formatRange(gap.startDate, gap.endDate)}</span>
+			<span class="text-xs font-semibold uppercase tracking-wide">No accommodation</span>
+			<span class="mt-0.5 text-[10px]">{formatRange(gap.startDate, gap.endDate)}</span>
 		</div>
 	</div>
 {/each}

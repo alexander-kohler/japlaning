@@ -113,7 +113,7 @@
 	)}
 	{@const key = `day-${day.date}`}
 	<div
-		class="z-10 flex flex-col gap-1 border-b border-slate-200 p-1.5"
+		class="z-10 flex flex-col gap-1 border-b border-l border-slate-200 p-1.5"
 		style="grid-row: {rowOffset + day.gridRowTop} / span 2; grid-column: 3"
 	>
 		{#if addContext || entries.length > 0}
@@ -134,28 +134,34 @@
 						{/key}
 					{:else}
 						<div
-							class="group flex items-center justify-between rounded border px-2 py-1.5 text-sm {cardClasses(tone)}"
+							class="group flex items-center justify-between rounded-lg border px-2 py-1.5 text-sm shadow-sm transition-shadow hover:shadow-md {cardClasses(tone)}"
 						>
-							<div>
-								<span>{activity.name}</span>
+							<div class="min-w-0 flex-1 truncate">
+								<span class="font-medium">{activity.name}</span>
 								{#if activity.date}
-									<span class="ml-2 text-xs opacity-70">{formatDay(activity.date)}</span>
+									<span class="ml-2 text-xs opacity-60">{formatDay(activity.date)}</span>
 								{/if}
 							</div>
-							<div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+							<div class="ml-1 flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
 								<button
 									type="button"
-									class="rounded px-1.5 py-0.5 text-xs hover:bg-white/50"
+									class="flex h-5 w-5 items-center justify-center rounded-md bg-white/70 text-slate-500 hover:bg-white hover:text-slate-700"
 									onclick={() => (editingId = activity.id)}
+									aria-label="Edit activity"
 								>
-									Edit
+									<svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/>
+									</svg>
 								</button>
 								<button
 									type="button"
-									class="rounded px-1.5 py-0.5 text-xs text-red-600 hover:bg-white/50"
+									class="flex h-5 w-5 items-center justify-center rounded-md bg-white/70 text-red-400 hover:bg-white hover:text-red-600"
 									onclick={() => store.removeActivity(activity.id)}
+									aria-label="Delete activity"
 								>
-									Del
+									<svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+										<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+									</svg>
 								</button>
 							</div>
 						</div>
@@ -168,10 +174,13 @@
 			<div class="flex justify-end">
 				<button
 					type="button"
-					class="rounded px-1.5 py-0.5 text-xs text-slate-600 hover:bg-slate-100"
+					class="inline-flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
 					onclick={() => (addingForKey = addingForKey === key ? null : key)}
 				>
-					+ Add
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+					</svg>
+					Add
 				</button>
 			</div>
 
