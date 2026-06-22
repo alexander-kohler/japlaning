@@ -11,65 +11,141 @@ import {
 
 const STORAGE_KEY = 'reiseplaner-data';
 const STORAGE_VERSION_KEY = 'reiseplaner-data-version';
-const STORAGE_VERSION = 5;
+const STORAGE_VERSION = 6;
 
 export function createDemoData(): PlannerData {
-	const hotelA = generateId();
-	const hotelB = generateId();
-	const hotelC = generateId();
-
 	return {
 		accommodations: [
 			{
-				id: hotelA,
-				name: 'Hotel Alpenblick',
-				checkIn: '2026-09-10',
+				id: generateId(),
+				name: 'ibis Styles Kyoto Shijo, Kyōto',
+				checkIn: '2026-08-26',
+				checkOut: '2026-09-01'
+			},
+			{
+				id: generateId(),
+				name: 'Comfort Hotel Kii Tanabe, Tanabe',
+				checkIn: '2026-09-01',
+				checkOut: '2026-09-02'
+			},
+			{
+				id: generateId(),
+				name: 'ゲストハウス八咫, Tanabe',
+				checkIn: '2026-09-02',
+				checkOut: '2026-09-03'
+			},
+			{
+				id: generateId(),
+				name: 'Cottage Kirihata, Tanabe',
+				checkIn: '2026-09-03',
+				checkOut: '2026-09-04'
+			},
+			{
+				id: generateId(),
+				name: 'ikkyu rental vacation house, Kobune',
+				checkIn: '2026-09-04',
+				checkOut: '2026-09-05'
+			},
+			{
+				id: generateId(),
+				name: '那智の里 Accommodation along the Kumano Kodo trail, Nachikatsuura',
+				checkIn: '2026-09-05',
+				checkOut: '2026-09-06'
+			},
+			{
+				id: generateId(),
+				name: 'Grand Residence Hotel Tenjin, Fukuoka (€98)',
+				checkIn: '2026-09-11',
 				checkOut: '2026-09-12'
 			},
 			{
-				id: hotelB,
-				name: 'Seehotel am See',
+				id: generateId(),
+				name: 'Simple Stay Beppu, Beppu (€110)',
 				checkIn: '2026-09-12',
 				checkOut: '2026-09-14'
 			},
 			{
-				id: hotelC,
-				name: 'Berghütte',
+				id: generateId(),
+				name: '阿蘇山麓のヴィラShijin南阿蘇, Minami Aso (€227)',
+				checkIn: '2026-09-14',
+				checkOut: '2026-09-16'
+			},
+			{
+				id: generateId(),
+				name: 'fav KUMAMOTO, Kumamoto (€83)',
+				checkIn: '2026-09-16',
+				checkOut: '2026-09-17'
+			},
+			{
+				id: generateId(),
+				name: 'Zee Haven nagasakiekimae – ZEE HAVEN長崎駅前, Nagasaki (€131)',
 				checkIn: '2026-09-17',
 				checkOut: '2026-09-19'
+			},
+			{
+				id: generateId(),
+				name: 'ロータスヴィレッジ, Fukuoka (€249)',
+				checkIn: '2026-09-19',
+				checkOut: '2026-09-21'
+			},
+			{
+				id: generateId(),
+				name: 'b hotel Heiwaodori 601, Hiroshima (€375)',
+				checkIn: '2026-09-21',
+				checkOut: '2026-09-24'
+			},
+			{
+				id: generateId(),
+				name: 'GRAND BASE Kurashiki Chuo, Kurashiki (€132)',
+				checkIn: '2026-09-24',
+				checkOut: '2026-09-26'
+			},
+			{
+				id: generateId(),
+				name: 'WAYFARER Matsu, Osaka (€315)',
+				checkIn: '2026-09-26',
+				checkOut: '2026-10-01'
+			},
+			{
+				id: generateId(),
+				name: 'Hotel Gee Haive, Mishima (€100)',
+				checkIn: '2026-10-01',
+				checkOut: '2026-10-02'
+			},
+			{
+				id: generateId(),
+				name: '一棟貸しVilla OMODAKA, Oguchi (€208)',
+				checkIn: '2026-10-02',
+				checkOut: '2026-10-04'
+			},
+			{
+				id: generateId(),
+				name: 'THE VIEW Odawara shiro-no mieru hotel – Vacation STAY 53335v, Odawara (€126)',
+				checkIn: '2026-10-04',
+				checkOut: '2026-10-05'
+			},
+			{
+				id: generateId(),
+				name: 'Airbnb SkytreeHouse 東向島, Sumida City / Tokyo',
+				checkIn: '2026-10-05',
+				checkOut: '2026-10-11'
 			}
 		],
 		cars: [
 			{
 				id: generateId(),
-				name: 'Rental car',
-				pickup: '2026-09-10',
-				dropoff: '2026-09-17'
+				name: 'Honda N-Box or similar, Nico Nico Rentacar, Fukuoka (€321.94)',
+				pickup: '2026-09-12',
+				dropoff: '2026-09-19'
+			},
+			{
+				id: generateId(),
+				name: 'Daihatsu Move or similar, Orix, Oshima (€153.05)',
+				pickup: '2026-10-02',
+				dropoff: '2026-10-04'
 			}
 		],
-		activities: [
-			{ id: generateId(), name: 'Old town walking tour', accommodationId: hotelA, date: '2026-09-11' },
-			{
-				id: generateId(),
-				name: 'Train to lakeside',
-				betweenStays: { afterAccommodationId: hotelA, beforeAccommodationId: hotelB },
-				date: '2026-09-12'
-			},
-			{ id: generateId(), name: 'Cable car ride', accommodationId: hotelB, date: '2026-09-13' },
-			{
-				id: generateId(),
-				name: 'Drop bags at new hotel',
-				accommodationId: hotelB,
-				date: '2026-09-12'
-			},
-			{
-				id: generateId(),
-				name: 'Hike to trailhead',
-				betweenStays: { afterAccommodationId: hotelB, beforeAccommodationId: hotelC },
-				date: '2026-09-15'
-			},
-			{ id: generateId(), name: 'Buy souvenirs', accommodationId: hotelC }
-		]
+		activities: []
 	};
 }
 
