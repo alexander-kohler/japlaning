@@ -54,73 +54,73 @@ export function createDemoData(): PlannerData {
 			},
 			{
 				id: generateId(),
-				name: 'Grand Residence Hotel Tenjin, Fukuoka (€98)',
+				name: 'Grand Residence Hotel Tenjin, Fukuoka',
 				checkIn: '2026-09-11',
 				checkOut: '2026-09-12'
 			},
 			{
 				id: generateId(),
-				name: 'Simple Stay Beppu, Beppu (€110)',
+				name: 'Simple Stay Beppu, Beppu',
 				checkIn: '2026-09-12',
 				checkOut: '2026-09-14'
 			},
 			{
 				id: generateId(),
-				name: '阿蘇山麓のヴィラShijin南阿蘇, Minami Aso (€227)',
+				name: '阿蘇山麓のヴィラShijin南阿蘇, Minami Aso',
 				checkIn: '2026-09-14',
 				checkOut: '2026-09-16'
 			},
 			{
 				id: generateId(),
-				name: 'fav KUMAMOTO, Kumamoto (€83)',
+				name: 'fav KUMAMOTO, Kumamoto',
 				checkIn: '2026-09-16',
 				checkOut: '2026-09-17'
 			},
 			{
 				id: generateId(),
-				name: 'Zee Haven nagasakiekimae – ZEE HAVEN長崎駅前, Nagasaki (€131)',
+				name: 'Zee Haven nagasakiekimae – ZEE HAVEN長崎駅前, Nagasaki',
 				checkIn: '2026-09-17',
 				checkOut: '2026-09-19'
 			},
 			{
 				id: generateId(),
-				name: 'ロータスヴィレッジ, Fukuoka (€249)',
+				name: 'ロータスヴィレッジ, Fukuoka',
 				checkIn: '2026-09-19',
 				checkOut: '2026-09-21'
 			},
 			{
 				id: generateId(),
-				name: 'b hotel Heiwaodori 601, Hiroshima (€375)',
+				name: 'b hotel Heiwaodori 601, Hiroshima',
 				checkIn: '2026-09-21',
 				checkOut: '2026-09-24'
 			},
 			{
 				id: generateId(),
-				name: 'GRAND BASE Kurashiki Chuo, Kurashiki (€132)',
+				name: 'GRAND BASE Kurashiki Chuo, Kurashiki',
 				checkIn: '2026-09-24',
 				checkOut: '2026-09-26'
 			},
 			{
 				id: generateId(),
-				name: 'WAYFARER Matsu, Osaka (€315)',
+				name: 'WAYFARER Matsu, Osaka',
 				checkIn: '2026-09-26',
 				checkOut: '2026-10-01'
 			},
 			{
 				id: generateId(),
-				name: 'Hotel Gee Haive, Mishima (€100)',
+				name: 'Hotel Gee Haive, Mishima',
 				checkIn: '2026-10-01',
 				checkOut: '2026-10-02'
 			},
 			{
 				id: generateId(),
-				name: '一棟貸しVilla OMODAKA, Oguchi (€208)',
+				name: '一棟貸しVilla OMODAKA, Oguchi',
 				checkIn: '2026-10-02',
 				checkOut: '2026-10-04'
 			},
 			{
 				id: generateId(),
-				name: 'THE VIEW Odawara shiro-no mieru hotel – Vacation STAY 53335v, Odawara (€126)',
+				name: 'THE VIEW Odawara shiro-no mieru hotel – Vacation STAY 53335v, Odawara',
 				checkIn: '2026-10-04',
 				checkOut: '2026-10-05'
 			},
@@ -134,13 +134,13 @@ export function createDemoData(): PlannerData {
 		cars: [
 			{
 				id: generateId(),
-				name: 'Honda N-Box or similar, Nico Nico Rentacar, Fukuoka (€321.94)',
+				name: 'Honda N-Box or similar, Nico Nico Rentacar, Fukuoka',
 				pickup: '2026-09-12',
 				dropoff: '2026-09-19'
 			},
 			{
 				id: generateId(),
-				name: 'Daihatsu Move or similar, Orix, Oshima (€153.05)',
+				name: 'Daihatsu Move or similar, Orix, Oshima',
 				pickup: '2026-10-02',
 				dropoff: '2026-10-04'
 			}

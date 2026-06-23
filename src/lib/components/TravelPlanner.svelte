@@ -2,6 +2,7 @@
 	import { PlannerStore } from '$lib/planner.svelte';
 	import AccommodationColumn from './AccommodationColumn.svelte';
 	import ActivitiesColumn from './ActivitiesColumn.svelte';
+	import CarColumn from './CarColumn.svelte';
 	import DatesColumn from './DatesColumn.svelte';
 	import ItemForm from './ItemForm.svelte';
 
@@ -106,6 +107,7 @@
 
 			<DatesColumn layout={store.calendarLayout} {rowOffset} />
 			<AccommodationColumn {store} layout={store.calendarLayout} {rowOffset} />
+			<CarColumn {store} layout={store.calendarLayout} {rowOffset} />
 			<ActivitiesColumn {store} layout={store.calendarLayout} {rowOffset} />
 		</div>
 	{/if}

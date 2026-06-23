@@ -27,7 +27,7 @@
 	</div>
 
 	<div
-		class="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 px-1 text-center opacity-0 transition-opacity group-hover:opacity-100"
+		class="pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 px-1 text-center opacity-0 transition-opacity group-hover:opacity-100"
 	>
 		<span class="inline-block rounded-lg bg-white/95 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200">
 			{car.name}
@@ -38,7 +38,7 @@
 	</div>
 
 	<div
-		class="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+		class="absolute top-0.5 right-0.5 z-10 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
 	>
 		{#if onedit}
 			<button
