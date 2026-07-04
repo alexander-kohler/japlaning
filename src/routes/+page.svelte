@@ -1,20 +1,12 @@
 <script lang="ts">
 	import { travelItems } from '$lib/data';
 
-	type Activity = {
-		id: string;
-		name: string;
-		start?: string;
-		end?: string;
-	};
-
 	type TimelineItem = {
 		id: string;
 		kind: string;
 		name: string;
 		start: string;
 		end: string;
-		activities?: Activity[];
 	};
 
 	type CarRental = {
@@ -26,17 +18,22 @@
 
 	const HOUR_MS = 1000 * 60 * 60;
 	const DAY_MS = 1000 * 60 * 60 * 24;
-	const HOUR_HEIGHT = 2.5;
-	const MIN_CARD_HEIGHT = 22;
-	const NAME_CHARS_PER_LINE = 34;
-	const BASE_CARD_HEIGHT = 26;
-	const LINE_HEIGHT = 12;
+	const HOUR_HEIGHT = 3;
+	const MIN_CARD_HEIGHT = 36;
+	const NAME_CHARS_PER_LINE = 36;
+	const BASE_CARD_HEIGHT = 40;
+	const BASE_TRANSIT_CARD_HEIGHT = 48;
+	const LINE_HEIGHT = 18;
+	const TRANSIT_LINE_HEIGHT = 20;
 	const CARD_GAP = 1;
+
+	let tableSection: HTMLElement;
+	let isExporting = $state(false);
+	let exportError = $state('');
 
 	const items = [...(travelItems.items as TimelineItem[])].sort(
 		(a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
 	);
-
 	const cars = travelItems.cars as CarRental[];
 
 	const timelineStartMs = toStartOfDay(
@@ -85,7 +82,14 @@
 	const rawItemSegments: RawSegment[] = items.map((item) => {
 		const startMs = new Date(item.start).getTime();
 		const endMs = new Date(item.end).getTime();
-		const minHeight = desiredCardHeight(`${itemEmoji(item.kind)} ${item.name}`);
+		const minHeight =
+			item.kind === 'accommodation'
+				? desiredCardHeight(`${itemEmoji(item.kind)} ${item.name}`)
+				: desiredCardHeight(
+						`${itemEmoji(item.kind)} ${item.name}`,
+						BASE_TRANSIT_CARD_HEIGHT,
+						TRANSIT_LINE_HEIGHT
+					);
 		return {
 			id: item.id,
 			name: item.name,
@@ -99,30 +103,6 @@
 		};
 	});
 
-	const rawActivitySegments: RawSegment[] = items.flatMap((item) => {
-		if (!item.activities?.length) return [];
-		const parentStartMs = new Date(item.start).getTime();
-		const parentEndMs = new Date(item.end).getTime();
-
-		return item.activities.map((activity) => {
-			const rawStartMs = activity.start ? new Date(activity.start).getTime() : parentStartMs;
-			const rawEndMs = activity.end ? new Date(activity.end).getTime() : rawStartMs + 2 * HOUR_MS;
-			const safeStartMs = Math.max(parentStartMs, rawStartMs);
-			const safeEndMs = Math.max(safeStartMs + HOUR_MS, Math.min(parentEndMs, rawEndMs));
-			const desiredHeight = desiredCardHeight(`🎯 ${activity.name}`);
-
-			return {
-				id: activity.id,
-				name: activity.name,
-				start: activity.start ?? item.start,
-				end: activity.end ?? item.end,
-				startMs: safeStartMs,
-				endMs: safeEndMs,
-				minHeight: desiredHeight
-			};
-		});
-	});
-
 	const rawCarSegments: RawSegment[] = cars.map((car) => {
 		const startMs = new Date(car.start).getTime();
 		const endMs = new Date(car.end).getTime();
@@ -133,11 +113,11 @@
 			end: car.end,
 			startMs,
 			endMs,
-			minHeight: 24
+			minHeight: 36
 		};
 	});
 
-	const dayLayouts = buildDayLayouts([rawItemSegments, rawActivitySegments, rawCarSegments]);
+	const dayLayouts = buildDayLayouts([rawItemSegments, rawCarSegments]);
 	const dayLayoutMap = new Map(dayLayouts.map((layout) => [layout.dayStart, layout]));
 
 	const itemSegments: Segment[] = rawItemSegments.map((segment) => ({
@@ -147,15 +127,6 @@
 		end: segment.end,
 		kind: segment.kind,
 		emoji: segment.emoji,
-		top: pxFromMs(segment.startMs),
-		height: scaledHeightFromMs(segment.startMs, segment.endMs, segment.minHeight)
-	}));
-
-	const activitySegments: Segment[] = rawActivitySegments.map((segment) => ({
-		id: segment.id,
-		name: segment.name,
-		start: segment.start,
-		end: segment.end,
 		top: pxFromMs(segment.startMs),
 		height: scaledHeightFromMs(segment.startMs, segment.endMs, segment.minHeight)
 	}));
@@ -173,7 +144,6 @@
 		300,
 		totalDayHeight(dayLayouts),
 		maxBottom(itemSegments),
-		maxBottom(activitySegments),
 		maxBottom(carSegments)
 	);
 
@@ -206,9 +176,49 @@
 		return layout.top + hourInDay * layout.hourHeight;
 	}
 
-	function desiredCardHeight(lineOne: string): number {
+	function desiredCardHeight(
+		lineOne: string,
+		baseHeight = BASE_CARD_HEIGHT,
+		lineHeight = LINE_HEIGHT
+	): number {
 		const nameLines = Math.max(1, Math.ceil(lineOne.length / NAME_CHARS_PER_LINE));
-		return BASE_CARD_HEIGHT + (nameLines - 1) * LINE_HEIGHT;
+		return baseHeight + (nameLines - 1) * lineHeight;
+	}
+
+	async function downloadTableJpg(): Promise<void> {
+		if (!tableSection || isExporting) return;
+
+		isExporting = true;
+		exportError = '';
+
+		try {
+			await document.fonts.ready;
+			const { toJpeg } = await import('html-to-image');
+			const width = tableSection.scrollWidth;
+			const height = tableSection.scrollHeight;
+			const dataUrl = await toJpeg(tableSection, {
+				backgroundColor: '#ffffff',
+				cacheBust: true,
+				height,
+				pixelRatio: 2,
+				quality: 0.95,
+				style: {
+					height: `${height}px`,
+					width: `${width}px`
+				},
+				width
+			});
+
+			const link = document.createElement('a');
+			link.download = 'japan-vertical-calendar.jpg';
+			link.href = dataUrl;
+			link.click();
+		} catch (error) {
+			console.error(error);
+			exportError = 'Could not export the table. Please try again.';
+		} finally {
+			isExporting = false;
+		}
 	}
 
 	function scaledHeightFromMs(startMs: number, endMs: number, minHeight: number): number {
@@ -283,12 +293,17 @@
 					const current = daySegments[index];
 					const hourInDay = (current.startMs - dayStart) / HOUR_MS;
 					const remainingHours = Math.max(0.25, 24 - hourInDay);
-					requiredHourHeight = Math.max(requiredHourHeight, current.minHeight / remainingHours);
+					const durationHours = Math.max(0.25, (current.endMs - current.startMs) / HOUR_MS);
+					const availableHours = current.endMs > dayStart + DAY_MS ? durationHours : remainingHours;
+					requiredHourHeight = Math.max(requiredHourHeight, current.minHeight / availableHours);
 
 					const next = daySegments[index + 1];
 					if (next && next.startMs >= current.endMs) {
 						const gapHours = Math.max(0.25, (next.startMs - current.startMs) / HOUR_MS);
-						requiredHourHeight = Math.max(requiredHourHeight, (current.minHeight + CARD_GAP) / gapHours);
+						requiredHourHeight = Math.max(
+							requiredHourHeight,
+							(current.minHeight + CARD_GAP) / gapHours
+						);
 					}
 				}
 
@@ -324,44 +339,67 @@
 	}
 </script>
 
-<main class="mx-auto max-w-7xl px-2 py-3 md:px-3">
-	<header class="mb-3">
-		<h1 class="text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">Japan Vertical Calendar</h1>
-		<p class="mt-1 text-xs text-zinc-600">Date | Accommodation / Transit | Activities</p>
+<main class="mx-auto max-w-7xl px-1.5 py-3 sm:px-2 md:px-3">
+	<header class="mb-3 flex flex-wrap items-start justify-between gap-2 px-0.5">
+		<div>
+			<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">
+				Japan Vertical Calendar
+			</h1>
+			<p class="mt-1 text-sm text-zinc-500">Date | Accommodation / Transit | Car rental</p>
+			{#if exportError}
+				<p class="mt-1 text-sm text-red-600">{exportError}</p>
+			{/if}
+		</div>
+		<button
+			type="button"
+			class="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+			disabled={isExporting}
+			onclick={downloadTableJpg}
+		>
+			{isExporting ? 'Exporting...' : 'Export JPG'}
+		</button>
 	</header>
 
 	<section
-		class="relative overflow-x-auto rounded-lg border border-zinc-200 bg-white p-2.5 shadow-sm"
+		bind:this={tableSection}
+		class="relative overflow-x-auto rounded-lg border border-zinc-200 bg-white p-1.5 shadow-sm sm:p-2.5"
 		aria-label="Vertical travel timeline"
 	>
-		<div class="mb-1 grid min-w-[860px] grid-cols-[120px_minmax(0,1fr)_minmax(0,1fr)] gap-2 px-1 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+		<div
+			class="mb-1.5 grid min-w-0 grid-cols-[76px_minmax(0,1fr)] gap-1.5 px-0.5 text-xs font-medium uppercase tracking-wide text-zinc-500 sm:min-w-[720px] sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3 sm:px-1 sm:text-sm"
+		>
 			<div>Date</div>
 			<div>Accommodation / Transit</div>
-			<div>Activities</div>
 		</div>
 
 		<div
-			class="relative grid min-w-[860px] grid-cols-[120px_minmax(0,1fr)_minmax(0,1fr)] gap-2"
+			class="relative grid min-w-0 grid-cols-[76px_minmax(0,1fr)] gap-1.5 sm:min-w-[720px] sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"
 			style={`height: ${timelineHeight}px;`}
 		>
 			<div class="pointer-events-none absolute left-0 right-0 top-0 h-full">
 				{#each days as day}
-					<div class="absolute left-0 right-0 border-t border-zinc-200" style={`top: ${day.lineTop}px;`}></div>
+					<div
+						class="absolute left-0 right-0 border-t border-zinc-200"
+						style={`top: ${day.lineTop}px;`}
+					></div>
 				{/each}
 			</div>
 
 			<div class="relative h-full">
 				{#each days as day}
-					<div class="absolute right-1 -translate-y-1/2 text-[10px] font-medium text-zinc-500" style={`top: ${day.centerTop}px;`}>
+					<div
+						class="absolute right-1 max-w-[68px] -translate-y-1/2 text-right text-[11px] font-normal leading-tight text-zinc-400 sm:max-w-none sm:text-sm"
+						style={`top: ${day.centerTop}px;`}
+					>
 						{day.label}
 					</div>
 				{/each}
 			</div>
 
-			<div class="relative h-full rounded-md border border-zinc-200 bg-zinc-50/70 px-1">
+			<div class="relative h-full rounded-md border border-zinc-200 bg-zinc-50/70 px-1 pr-7 sm:pr-9">
 				{#each itemSegments as segment}
 					<div
-						class={`absolute left-1 right-1 rounded-md border px-1.5 py-1 shadow-sm ${
+						class={`absolute left-0.5 right-6 overflow-hidden rounded-md border px-1.5 py-1 shadow-sm sm:left-1 sm:right-8 sm:px-2 sm:py-1.5 ${
 							segment.kind === 'accommodation'
 								? 'border-sky-200 bg-sky-100/90'
 								: 'border-amber-200 bg-amber-100/90'
@@ -369,50 +407,28 @@
 						style={`top: ${segment.top}px; height: ${segment.height}px;`}
 						title={`${segment.name} (${formatTimeRange(segment.start, segment.end)})`}
 					>
-						<div class="pr-1 text-[11px] font-medium leading-4 text-zinc-900">
-							{itemEmoji(segment.kind ?? 'transit')} {segment.name}
+						<div class="break-words pr-1 text-[13px] font-semibold leading-4 text-zinc-900 sm:text-sm sm:leading-5">
+							{itemEmoji(segment.kind ?? 'transit')}
+							{segment.name}
 						</div>
-						<p class="text-[10px] leading-3.5 text-zinc-700">
+						<p class="text-[11px] leading-4 text-zinc-500 sm:text-xs sm:leading-5">
 							{formatTimeRange(segment.start, segment.end)}
 						</p>
 					</div>
 				{/each}
-			</div>
 
-			<div class="relative h-full rounded-md border border-zinc-200 bg-zinc-50/70 px-1">
-				<div class="pointer-events-none absolute -left-[8px] top-0 h-full w-4">
-					<div class="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-zinc-300"></div>
-					{#each carSegments as car}
-						<div
-							class="absolute left-1/2 flex w-5 -translate-x-1/2 flex-col items-center justify-between"
-							style={`top: ${car.top}px; height: ${car.height}px;`}
-							title={`${car.name} (${formatTimeRange(car.start, car.end)})`}
-						>
-							<span class="text-sm leading-none">🚗</span>
-							<span class="w-px flex-1 bg-amber-500"></span>
-							<span class="text-sm leading-none">🚗</span>
-						</div>
-					{/each}
-				</div>
-
-				{#if activitySegments.length}
-					{#each activitySegments as activity}
-						<div
-							class="absolute left-1 right-1 rounded-md border border-emerald-200 bg-emerald-100/85 px-1.5 py-1 shadow-sm"
-							style={`top: ${activity.top}px; height: ${activity.height}px;`}
-							title={`${activity.name} (${formatTimeRange(activity.start, activity.end)})`}
-						>
-							<p class="pr-1 text-[11px] font-medium leading-4 text-zinc-900">🎯 {activity.name}</p>
-							<p class="text-[10px] leading-3.5 text-zinc-700">
-								{formatTimeRange(activity.start, activity.end)}
-							</p>
-						</div>
-					{/each}
-				{:else}
-					<div class="absolute inset-x-2 top-2 rounded-md border border-dashed border-zinc-300 bg-white/70 p-2 text-xs text-zinc-500">
-						No activities with times.
+				{#each carSegments as car}
+					<div
+						class="absolute right-1 flex w-5 flex-col items-center justify-between sm:right-1.5"
+						style={`top: ${car.top}px; height: ${car.height}px;`}
+						title={`${car.name} (${formatTimeRange(car.start, car.end)})`}
+						aria-label={`${car.name}, ${formatTimeRange(car.start, car.end)}`}
+					>
+						<span class="rounded-full bg-white text-sm leading-none shadow-sm">🚗</span>
+						<span class="my-0.5 w-0.5 flex-1 rounded-full bg-amber-500"></span>
+						<span class="rounded-full bg-white text-sm leading-none shadow-sm">🚗</span>
 					</div>
-				{/if}
+				{/each}
 			</div>
 		</div>
 	</section>
