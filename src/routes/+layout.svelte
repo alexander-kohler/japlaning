@@ -20,7 +20,7 @@
 	{#if !isLogin}
 		<nav class="border-b border-zinc-200 bg-white">
 			<div class="mx-auto flex max-w-7xl items-center gap-1 px-3 py-2 sm:px-4">
-				<span class="mr-3 text-sm font-semibold tracking-tight text-zinc-900">Reiseplaner</span>
+				<span class="mr-3 text-sm font-semibold tracking-tight text-zinc-900">Japlaning</span>
 				{#each links as link (link.href)}
 					<a
 						href={resolve(link.href)}
