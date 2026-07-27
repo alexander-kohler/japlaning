@@ -69,6 +69,9 @@
 	};
 
 	const CARD_GAP = 12;
+	/** Visual gap above/below standalone date separator rows. */
+	const DATE_GAP = -4;
+	const DATE_PULL = CARD_GAP - DATE_GAP;
 	const DAY_MS = 1000 * 60 * 60 * 24;
 
 	let tableSection: HTMLElement;
@@ -171,6 +174,14 @@
 		});
 	}
 
+	function formatDateParts(ms: number): { weekday: string; dayMonth: string } {
+		const date = new Date(ms);
+		return {
+			weekday: date.toLocaleDateString('en-GB', { weekday: 'short' }),
+			dayMonth: date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+		};
+	}
+
 	function buildRows(cards: CardItem[]): Row[] {
 		const output: Row[] = [];
 
@@ -258,6 +269,13 @@
 		});
 	}
 
+	function formatTime(value: Date): string {
+		return value.toLocaleTimeString('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+	}
+
 	function formatBookingDateRange(start: string, end: string, kind?: string): string {
 		const startDate = new Date(start);
 		const endDate = new Date(end);
@@ -272,6 +290,11 @@
 				month: 'short'
 			});
 			return `${startLabel} – ${endLabel}`;
+		}
+
+		const sameDay = toStartOfDay(startDate.getTime()) === toStartOfDay(endDate.getTime());
+		if (sameDay) {
+			return `${formatTime(startDate)} → ${formatTime(endDate)}`;
 		}
 
 		return `${formatCompactDateTime(start)} → ${formatCompactDateTime(end)}`;
@@ -392,33 +415,46 @@
 	}
 </script>
 
-<main class="mx-auto max-w-7xl px-1.5 py-3 sm:px-2 md:px-3">
-	<header class="mb-3 flex flex-wrap items-start justify-between gap-2 px-0.5">
-		<div>
-			<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">
+<main class="mx-auto max-w-7xl px-3 py-4 sm:px-4 md:px-6">
+	<header class="mb-4 flex items-start justify-between gap-3">
+		<div class="min-w-0">
+			<h1 class="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl md:text-3xl">
 				Japan Vertical Calendar
 			</h1>
-			<p class="mt-1 text-sm text-zinc-500">Date | Accommodation / Transit | Car rental</p>
+			<p class="mt-1 hidden text-sm text-zinc-500 sm:block">
+				Date | Accommodation / Transit | Car rental
+			</p>
 			{#if exportError}
 				<p class="mt-1 text-sm text-red-600">{exportError}</p>
 			{/if}
 		</div>
 		<button
 			type="button"
-			class="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+			class="shrink-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
 			disabled={isExporting}
 			onclick={downloadTableJpg}
 		>
-			{isExporting ? 'Exporting...' : 'Export JPG'}
+			{isExporting ? 'Exporting…' : 'Export'}
 		</button>
 	</header>
 
 	<label
-		class="mb-3 flex flex-col gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-sm sm:flex-row sm:items-center sm:gap-4"
+		class="mb-4 flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:py-2.5"
 	>
-		<span class="shrink-0 text-sm font-medium text-zinc-700">Simulate day</span>
+		<div class="flex items-center justify-between gap-3 sm:contents">
+			<span class="shrink-0 text-sm font-medium text-zinc-700">Simulate day</span>
+			<span
+				class="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-sky-600 tabular-nums sm:order-last"
+			>
+				<span
+					class="h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
+					aria-hidden="true"
+				></span>
+				{formatDateLabel(todayMs)}
+			</span>
+		</div>
 		<input
-			class="min-w-0 flex-1 accent-sky-600"
+			class="min-w-0 w-full flex-1 touch-manipulation accent-sky-600 sm:w-auto"
 			type="range"
 			min="0"
 			max={tripDayCount - 1}
@@ -429,29 +465,27 @@
 			}}
 			aria-valuetext={formatDateLabel(todayMs)}
 		/>
-		<span class="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-sky-600 tabular-nums">
-			<span
-				class="h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
-				aria-hidden="true"
-			></span>
-			{formatDateLabel(todayMs)}
-		</span>
 	</label>
 
 	<section
 		bind:this={tableSection}
-		class="relative overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-100/80 p-1.5 shadow-sm sm:p-2.5"
+		class="relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100/80 py-2 pl-2 pr-1 shadow-sm sm:px-2.5 sm:pb-2.5"
+		style={`padding-top: ${DATE_PULL + 8}px;`}
 		aria-label="Vertical travel timeline"
 	>
 		<div
-			class="grid min-w-0 grid-cols-[76px_minmax(0,1fr)_28px] gap-x-1.5 sm:min-w-[720px] sm:grid-cols-[130px_minmax(0,1fr)_36px] sm:gap-x-3"
+			class="grid min-w-0 grid-cols-[52px_minmax(0,1fr)_14px] gap-x-1 sm:grid-cols-[130px_minmax(0,1fr)_36px] sm:gap-x-3"
 			style={`row-gap: ${CARD_GAP}px;`}
 		>
 			{#each rows as row (row.type === 'date' ? row.id : row.item.id)}
 				{#if row.type === 'date'}
 					{@const dateRails = carRailForDateBefore(row.beforeIndex)}
 					{@const current = isCurrentDay(row.dayKey)}
-					<div class="flex items-center justify-end gap-1.5">
+					{@const parts = formatDateParts(row.dayKey)}
+					<div
+						class="flex items-center justify-end gap-1"
+						style={`margin-block: -${DATE_PULL}px;`}
+					>
 						{#if current}
 							<span
 								class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
@@ -459,23 +493,33 @@
 								aria-hidden="true"
 							></span>
 						{/if}
-						<p
-							class={`text-right text-[11px] leading-tight sm:text-sm ${
+						<div
+							class={`text-right leading-tight ${
 								current ? 'font-semibold text-sky-600' : 'font-medium text-zinc-500'
 							}`}
 						>
-							{row.label}
-						</p>
+							<p class="hidden text-sm sm:block">{row.label}</p>
+							<p class="sm:hidden">
+								<span class="block text-[10px] uppercase tracking-wide opacity-80"
+									>{parts.weekday}</span
+								>
+								<span class="block text-[11px] tabular-nums">{parts.dayMonth}</span>
+							</p>
+						</div>
 					</div>
-					<div class="flex items-center" aria-hidden="true">
+					<div
+						class="flex items-center"
+						style={`margin-block: -${DATE_PULL}px;`}
+						aria-hidden="true"
+					>
 						<div class={`h-px w-full ${current ? 'bg-sky-300' : 'bg-zinc-200/80'}`}></div>
 					</div>
 					<div
 						class="relative flex justify-center"
-						style={`margin-bottom: -${CARD_GAP}px; padding-bottom: ${CARD_GAP}px; margin-top: -${CARD_GAP}px; padding-top: ${CARD_GAP}px;`}
+						style={`margin-bottom: -${CARD_GAP + DATE_PULL}px; padding-bottom: ${CARD_GAP + DATE_PULL}px; margin-top: -${CARD_GAP + DATE_PULL}px; padding-top: ${CARD_GAP + DATE_PULL}px;`}
 					>
 						{#each dateRails as span (span.id)}
-							<div class="absolute inset-y-0 flex w-5 flex-col items-center" aria-hidden="true">
+							<div class="absolute inset-y-0 flex w-3.5 flex-col items-center sm:w-5" aria-hidden="true">
 								<span class="w-0.5 flex-1 rounded-full bg-amber-500"></span>
 							</div>
 						{/each}
@@ -485,9 +529,10 @@
 					{@const rails = carRailForCard(segment.index)}
 					{@const isLastCard = segment.index === cardItems.length - 1}
 
-					<div class="relative flex items-center justify-end gap-1.5">
+					<div class="relative flex items-center justify-end gap-1">
 						{#if segment.dateLabel && segment.dateDayKey !== null}
 							{@const current = isCurrentDay(segment.dateDayKey)}
+							{@const parts = formatDateParts(segment.dateDayKey)}
 							{#if current}
 								<span
 									class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
@@ -495,22 +540,35 @@
 									aria-hidden="true"
 								></span>
 							{/if}
-							<p
-								class={`text-right text-[11px] leading-tight sm:text-sm ${
+							<div
+								class={`text-right leading-tight ${
 									current ? 'font-semibold text-sky-600' : 'font-medium text-zinc-500'
 								}`}
 							>
-								{segment.dateLabel}
-							</p>
+								<p class="hidden text-sm sm:block">{segment.dateLabel}</p>
+								<p class="sm:hidden">
+									<span class="block text-[10px] uppercase tracking-wide opacity-80"
+										>{parts.weekday}</span
+									>
+									<span class="block text-[11px] tabular-nums">{parts.dayMonth}</span>
+								</p>
+							</div>
 						{:else if todayCardId === segment.id}
+							{@const parts = formatDateParts(todayMs)}
 							<span
 								class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
 								title="Today"
 								aria-hidden="true"
 							></span>
-							<p class="text-right text-[11px] font-semibold leading-tight text-sky-600 sm:text-sm">
-								{formatDateLabel(todayMs)}
-							</p>
+							<div class="text-right font-semibold leading-tight text-sky-600">
+								<p class="hidden text-sm sm:block">{formatDateLabel(todayMs)}</p>
+								<p class="sm:hidden">
+									<span class="block text-[10px] uppercase tracking-wide opacity-80"
+										>{parts.weekday}</span
+									>
+									<span class="block text-[11px] tabular-nums">{parts.dayMonth}</span>
+								</p>
+							</div>
 						{/if}
 					</div>
 
@@ -518,86 +576,80 @@
 						class="rounded-xl border border-zinc-200 bg-white shadow-sm"
 						title={`${segment.name} (${formatTimeRange(segment.start, segment.end)})`}
 					>
-						<div class="flex items-start gap-2.5 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
+						<div class="flex items-start gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
 							<div
-								class={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-xl sm:h-14 sm:w-14 sm:text-2xl ${thumbClasses(segment.kind)}`}
+								class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg sm:h-14 sm:w-14 sm:text-2xl ${thumbClasses(segment.kind)}`}
 								aria-hidden="true"
 							>
 								{thumbEmoji(segment.kind)}
 							</div>
 
 							<div class="min-w-0 flex-1">
-								<h3 class="text-sm font-semibold leading-snug text-zinc-900 sm:text-base">
+								<h3 class="text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base">
 									{segment.displayName}
 								</h3>
-								<p class="mt-0.5 text-[11px] leading-snug text-zinc-500 sm:text-xs">
-									{[
-										formatBookingDateRange(segment.start, segment.end, segment.kind),
-										segment.location,
-										kindLabel(segment.kind)
-									]
-										.filter(Boolean)
-										.join(' · ')}
-								</p>
-							</div>
-						</div>
-
-						{#if segment.kind === 'accommodation' || segment.activities.length}
-							<ul class="border-t border-zinc-100">
-								{#if segment.kind === 'accommodation'}
-									<li class="border-b border-zinc-100 last:border-b-0">
+								<div class="mt-0.5 flex items-end justify-between gap-2">
+									<div class="min-w-0">
+										<p class="text-[11px] leading-snug text-zinc-500 sm:text-xs">
+											{formatBookingDateRange(segment.start, segment.end, segment.kind)}
+										</p>
+										{#if segment.location || segment.kind}
+											<p class="mt-0.5 text-[11px] leading-snug text-zinc-400 sm:text-xs">
+												{[segment.location, kindLabel(segment.kind)].filter(Boolean).join(' · ')}
+											</p>
+										{/if}
+									</div>
+									{#if segment.kind === 'accommodation'}
 										<a
 											href={googleMapsUrl(segment.address ?? segment.name)}
 											target="_blank"
 											rel="noopener noreferrer external"
-											class="flex items-center gap-2.5 px-2.5 py-2.5 text-left transition hover:bg-zinc-50 sm:px-3"
+											class="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 active:bg-zinc-100"
 											aria-label={`Open ${segment.name} in Google Maps`}
-										>
-											<span
-											class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-500"
-											aria-hidden="true"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
 												viewBox="0 0 24 24"
 												fill="currentColor"
-												class="h-3.5 w-3.5"
+												class="h-4 w-4"
+												aria-hidden="true"
 											>
 												<path
 													d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"
 												/>
 											</svg>
-										</span>
-										<span class="min-w-0 flex-1 text-[12px] text-zinc-700 sm:text-sm"
-											>Google Maps</span
+											<span class="hidden text-xs font-medium sm:inline">Google Maps</span>
+										</a>
+									{/if}
+								</div>
+							</div>
+						</div>
+
+						{#if (segment.kind === 'accommodation' && segment.bookingUrl) || segment.activities.length}
+							<ul class="border-t border-zinc-100">
+								{#if segment.kind === 'accommodation' && segment.bookingUrl}
+									<li class="border-b border-zinc-100 last:border-b-0">
+										<a
+											href={segment.bookingUrl}
+											target="_blank"
+											rel="noopener noreferrer external"
+											class="flex min-h-11 items-center gap-2.5 px-2.5 py-2.5 text-left transition hover:bg-zinc-50 active:bg-zinc-50 sm:min-h-0 sm:px-3"
+											aria-label={`Open ${segment.name} on ${bookingLabel(segment.bookingUrl)}`}
 										>
+											<span
+												class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-sm"
+												aria-hidden="true">🔗</span
+											>
+											<span class="min-w-0 flex-1 text-[12px] text-zinc-700 sm:text-sm"
+												>{bookingLabel(segment.bookingUrl)}</span
+											>
 											<span class="shrink-0 text-zinc-300" aria-hidden="true">›</span>
 										</a>
 									</li>
-									{#if segment.bookingUrl}
-										<li class="border-b border-zinc-100 last:border-b-0">
-											<a
-												href={segment.bookingUrl}
-												target="_blank"
-												rel="noopener noreferrer external"
-												class="flex items-center gap-2.5 px-2.5 py-2.5 text-left transition hover:bg-zinc-50 sm:px-3"
-												aria-label={`Open ${segment.name} on ${bookingLabel(segment.bookingUrl)}`}
-											>
-												<span
-													class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-sm"
-													aria-hidden="true">🔗</span
-												>
-												<span class="min-w-0 flex-1 text-[12px] text-zinc-700 sm:text-sm"
-													>{bookingLabel(segment.bookingUrl)}</span
-												>
-												<span class="shrink-0 text-zinc-300" aria-hidden="true">›</span>
-											</a>
-										</li>
-									{/if}
 								{/if}
 								{#each segment.activities as activity (activity.id)}
 									<li class="border-b border-zinc-100 last:border-b-0">
-										<div class="flex items-center gap-2.5 px-2.5 py-2.5 sm:px-3">
+										<div class="flex min-h-11 items-center gap-2.5 px-2.5 py-2.5 sm:min-h-0 sm:px-3">
 											<span
 												class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-sm"
 												aria-hidden="true">★</span
@@ -618,18 +670,22 @@
 					>
 						{#each rails as rail (rail.span.id)}
 							<div
-								class="absolute inset-y-0 flex w-5 flex-col items-center"
+								class="absolute inset-y-0 flex w-3.5 flex-col items-center sm:w-5"
 								title={`${rail.span.name} (${formatTimeRange(rail.span.start, rail.span.end)})`}
 								aria-label={`${rail.span.name}, ${formatTimeRange(rail.span.start, rail.span.end)}`}
 							>
 								{#if rail.isFirst}
-									<span class="rounded-full bg-white text-sm leading-none shadow-sm">🚗</span>
+									<span class="rounded-full bg-white text-xs leading-none shadow-sm sm:text-sm"
+										>🚗</span
+									>
 								{:else}
 									<span class="h-1.5 w-0.5 rounded-full bg-amber-500" aria-hidden="true"></span>
 								{/if}
 								<span class="w-0.5 flex-1 rounded-full bg-amber-500" aria-hidden="true"></span>
 								{#if rail.isLast}
-									<span class="rounded-full bg-white text-sm leading-none shadow-sm">🚗</span>
+									<span class="rounded-full bg-white text-xs leading-none shadow-sm sm:text-sm"
+										>🚗</span
+									>
 								{:else}
 									<span class="h-1.5 w-0.5 rounded-full bg-amber-500" aria-hidden="true"></span>
 								{/if}
