@@ -23,6 +23,7 @@
 	let saving = $state(false);
 
 	let newPersonName = $state('');
+	let managingPeople = $state(false);
 	let editingExpenseId = $state<string | null>(null);
 	let description = $state('');
 	let amount = $state('');
@@ -123,6 +124,15 @@
 		}
 	});
 
+	$effect(() => {
+		if (!managingPeople) return;
+		function onKeydown(event: KeyboardEvent) {
+			if (event.key === 'Escape') managingPeople = false;
+		}
+		window.addEventListener('keydown', onKeydown);
+		return () => window.removeEventListener('keydown', onKeydown);
+	});
+
 	async function readError(response: Response): Promise<string> {
 		try {
 			const payload = (await response.json()) as { message?: string };
@@ -164,6 +174,12 @@
 	}
 
 	async function removePerson(id: string): Promise<void> {
+		const person = people.find((p) => p.id === id);
+		const name = person?.name ?? 'this person';
+		if (!confirm(`Remove ${name} from the cost split? Their expenses will stay, but they will no longer be included.`)) {
+			return;
+		}
+
 		saving = true;
 		formError = '';
 		try {
@@ -173,7 +189,7 @@
 				return;
 			}
 
-			people = people.filter((person) => person.id !== id);
+			people = people.filter((p) => p.id !== id);
 			splitAmong = splitAmong.filter((personId) => personId !== id);
 			if (paidBy === id) paidBy = people[0]?.id ?? '';
 		} catch (error) {
@@ -379,72 +395,15 @@
 
 	<div class="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start">
 		<div class="space-y-8">
-			<section aria-labelledby="people-heading">
-				<div class="mb-2 flex items-baseline justify-between gap-3">
-					<h2 id="people-heading" class="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-						People
-					</h2>
-					{#if people.length || expenses.length}
-						<button
-							type="button"
-							class="text-xs text-zinc-400 underline-offset-2 hover:text-zinc-700 hover:underline disabled:opacity-60"
-							disabled={saving}
-							onclick={() => void clearAll()}
-						>
-							Clear all
-						</button>
-					{/if}
-				</div>
-
-				<form
-					class="flex flex-col gap-2 sm:flex-row"
-					onsubmit={(event) => {
-						event.preventDefault();
-						void addPerson();
-					}}
+			<div>
+				<button
+					type="button"
+					class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+					onclick={() => (managingPeople = true)}
 				>
-					<input
-						class="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-500"
-						type="text"
-						name="name"
-						placeholder="Name"
-						bind:value={newPersonName}
-						autocomplete="off"
-						required
-						disabled={saving}
-					/>
-					<button
-						type="submit"
-						class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:opacity-60"
-						disabled={saving}
-					>
-						Add
-					</button>
-				</form>
-
-				{#if people.length}
-					<ul class="mt-3 flex flex-wrap gap-2">
-						{#each people as person (person.id)}
-							<li
-								class="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-800"
-							>
-								{person.name}
-								<button
-									type="button"
-									class="text-zinc-400 hover:text-red-600 disabled:opacity-60"
-									aria-label={`Remove ${person.name}`}
-									disabled={saving}
-									onclick={() => void removePerson(person.id)}
-								>
-									×
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="mt-3 text-sm text-zinc-500">Add at least two people to start splitting.</p>
-				{/if}
-			</section>
+					Manage people
+				</button>
+			</div>
 
 			<section aria-labelledby="expense-heading">
 				<div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -761,3 +720,109 @@
 		{/if}
 	</section>
 </main>
+
+{#if managingPeople}
+	<div
+		class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/40 p-4 sm:items-center"
+		role="presentation"
+		onclick={(event) => {
+			if (event.target === event.currentTarget) managingPeople = false;
+		}}
+	>
+		<div
+			class="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-5 shadow-lg"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="people-modal-heading"
+			tabindex="-1"
+		>
+			<div class="mb-4 flex items-start justify-between gap-3">
+				<div>
+					<h2 id="people-modal-heading" class="text-lg font-semibold text-zinc-900">
+						Manage people
+					</h2>
+					<p class="mt-1 text-sm text-zinc-500">Add or remove people from the cost split.</p>
+				</div>
+				<button
+					type="button"
+					class="rounded-md px-2 py-1 text-sm text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+					aria-label="Close"
+					onclick={() => (managingPeople = false)}
+				>
+					×
+				</button>
+			</div>
+
+			<form
+				class="flex flex-col gap-2 sm:flex-row"
+				onsubmit={(event) => {
+					event.preventDefault();
+					void addPerson();
+				}}
+			>
+				<input
+					class="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-500"
+					type="text"
+					name="name"
+					placeholder="Name"
+					bind:value={newPersonName}
+					autocomplete="off"
+					required
+					disabled={saving}
+				/>
+				<button
+					type="submit"
+					class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:opacity-60"
+					disabled={saving}
+				>
+					Add
+				</button>
+			</form>
+
+			{#if people.length}
+				<ul class="mt-4 flex flex-wrap gap-2">
+					{#each people as person (person.id)}
+						<li
+							class="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-800"
+						>
+							{person.name}
+							<button
+								type="button"
+								class="text-zinc-400 hover:text-red-600 disabled:opacity-60"
+								aria-label={`Remove ${person.name}`}
+								disabled={saving}
+								onclick={() => void removePerson(person.id)}
+							>
+								×
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="mt-4 text-sm text-zinc-500">Add at least two people to start splitting.</p>
+			{/if}
+
+			<div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
+				{#if people.length || expenses.length}
+					<button
+						type="button"
+						class="text-sm text-zinc-400 underline-offset-2 hover:text-red-600 hover:underline disabled:opacity-60"
+						disabled={saving}
+						onclick={() => void clearAll()}
+					>
+						Clear all
+					</button>
+				{:else}
+					<span></span>
+				{/if}
+				<button
+					type="button"
+					class="rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800"
+					onclick={() => (managingPeople = false)}
+				>
+					Done
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
