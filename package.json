@@ -36,6 +36,7 @@
 		"vite": "^8.0.16"
 	},
 	"dependencies": {
+		"@libsql/client": "^0.17.4",
 		"html-to-image": "^1.11.13"
 	}
 }

@@ -116,34 +116,3 @@ export function computeSettlements(balances: Balance[]): Settlement[] {
 function roundCents(value: number): number {
 	return Math.round(value * 100) / 100;
 }
-
-const STORAGE_KEY = 'reiseplaner-cost-split';
-
-type StoredState = {
-	people: Person[];
-	expenses: Expense[];
-};
-
-export function loadState(): StoredState {
-	if (typeof localStorage === 'undefined') {
-		return { people: [], expenses: [] };
-	}
-
-	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) return { people: [], expenses: [] };
-		const parsed = JSON.parse(raw) as StoredState;
-		return {
-			people: Array.isArray(parsed.people) ? parsed.people : [],
-			expenses: Array.isArray(parsed.expenses) ? parsed.expenses : []
-		};
-	} catch {
-		return { people: [], expenses: [] };
-	}
-}
-
-export function saveState(people: Person[], expenses: Expense[]): void {
-	if (typeof localStorage === 'undefined') return;
-	const payload: StoredState = { people, expenses };
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-}

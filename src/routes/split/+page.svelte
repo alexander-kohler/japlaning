@@ -8,24 +8,19 @@
 		formatMoney,
 		type Currency
 	} from '$lib/currency';
-	import {
-		computeBalances,
-		computeSettlements,
-		createId,
-		loadState,
-		saveState,
-		type Expense,
-		type Person
-	} from '$lib/expenses';
+	import { computeBalances, computeSettlements, type Expense, type Person } from '$lib/expenses';
+
+	let { data } = $props();
 
 	let people = $state<Person[]>([]);
 	let expenses = $state<Expense[]>([]);
+	let persistence = $state<'turso' | 'local'>('local');
 	let currencies = $state<Currency[]>([]);
 	let currenciesError = $state('');
 	let currenciesLoading = $state(true);
 	let formError = $state('');
 	let converting = $state(false);
-	let hydrated = $state(false);
+	let saving = $state(false);
 
 	let newPersonName = $state('');
 	let description = $state('');
@@ -38,12 +33,17 @@
 	const settlements = $derived(computeSettlements(balances));
 	const totalEur = $derived(expenses.reduce((sum, expense) => sum + (expense.amountEur || 0), 0));
 
-	onMount(async () => {
-		const stored = loadState();
-		people = stored.people;
-		expenses = stored.expenses;
-		hydrated = true;
+	$effect(() => {
+		people = data.people;
+		expenses = data.expenses;
+		persistence = data.persistence;
+		if (!paidBy && data.people[0]) paidBy = data.people[0].id;
+		if (!splitAmong.length && data.people.length) {
+			splitAmong = data.people.map((person) => person.id);
+		}
+	});
 
+	onMount(async () => {
 		try {
 			currencies = await fetchCurrencies();
 			if (!currencies.some((c) => c.iso_code === currency)) {
@@ -60,52 +60,81 @@
 		}
 	});
 
-	$effect(() => {
-		if (!hydrated) return;
-		saveState(people, expenses);
-	});
-
-	function addPerson(): void {
-		const name = newPersonName.trim();
-		if (!name) return;
-		if (people.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
-			formError = 'That person is already in the list.';
-			return;
+	async function readError(response: Response): Promise<string> {
+		try {
+			const payload = (await response.json()) as { message?: string };
+			if (payload.message) return payload.message;
+		} catch {
+			// ignore parse errors
 		}
-
-		const person: Person = { id: createId(), name };
-		people = [...people, person];
-		splitAmong = [...splitAmong, person.id];
-		if (!paidBy) paidBy = person.id;
-		newPersonName = '';
-		formError = '';
+		return `Request failed (${response.status})`;
 	}
 
-	function removePerson(id: string): void {
-		if (expenses.some((e) => e.paidBy === id || e.splitAmong.includes(id))) {
-			formError = 'Remove expenses involving this person first.';
-			return;
-		}
-		people = people.filter((p) => p.id !== id);
-		splitAmong = splitAmong.filter((pid) => pid !== id);
-		if (paidBy === id) paidBy = people[0]?.id ?? '';
+	async function addPerson(): Promise<void> {
+		const name = newPersonName.trim();
+		if (!name) return;
+
+		saving = true;
 		formError = '';
+		try {
+			const response = await fetch('/api/people', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ name })
+			});
+			if (!response.ok) {
+				formError = await readError(response);
+				return;
+			}
+
+			const payload = (await response.json()) as { person: Person };
+			people = [...people, payload.person];
+			splitAmong = [...splitAmong, payload.person.id];
+			if (!paidBy) paidBy = payload.person.id;
+			newPersonName = '';
+		} catch (error) {
+			console.error(error);
+			formError = 'Could not save person. Check the database connection.';
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function removePerson(id: string): Promise<void> {
+		saving = true;
+		formError = '';
+		try {
+			const response = await fetch(`/api/people/${id}`, { method: 'DELETE' });
+			if (!response.ok) {
+				formError = await readError(response);
+				return;
+			}
+
+			people = people.filter((person) => person.id !== id);
+			splitAmong = splitAmong.filter((personId) => personId !== id);
+			if (paidBy === id) paidBy = people[0]?.id ?? '';
+		} catch (error) {
+			console.error(error);
+			formError = 'Could not remove person. Check the database connection.';
+		} finally {
+			saving = false;
+		}
 	}
 
 	function toggleSplit(id: string): void {
 		if (splitAmong.includes(id)) {
-			splitAmong = splitAmong.filter((pid) => pid !== id);
+			splitAmong = splitAmong.filter((personId) => personId !== id);
 		} else {
 			splitAmong = [...splitAmong, id];
 		}
 	}
 
 	function selectAllSplit(): void {
-		splitAmong = people.map((p) => p.id);
+		splitAmong = people.map((person) => person.id);
 	}
 
 	function personName(id: string): string {
-		return people.find((p) => p.id === id)?.name ?? 'Unknown';
+		return people.find((person) => person.id === id)?.name ?? 'Unknown';
 	}
 
 	async function addExpense(): Promise<void> {
@@ -137,38 +166,75 @@
 		converting = true;
 		try {
 			const amountEur = await convertToEur(parsedAmount, currency);
-			const expense: Expense = {
-				id: createId(),
-				description: desc,
-				amount: parsedAmount,
-				currency: currency.toUpperCase(),
-				amountEur,
-				paidBy,
-				splitAmong: [...splitAmong],
-				createdAt: new Date().toISOString()
-			};
-			expenses = [expense, ...expenses];
+			const response = await fetch('/api/expenses', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					description: desc,
+					amount: parsedAmount,
+					currency: currency.toUpperCase(),
+					amountEur,
+					paidBy,
+					splitAmong
+				})
+			});
+
+			if (!response.ok) {
+				formError = await readError(response);
+				return;
+			}
+
+			const payload = (await response.json()) as { expense: Expense };
+			expenses = [payload.expense, ...expenses];
 			description = '';
 			amount = '';
 		} catch (error) {
 			console.error(error);
-			formError = `Could not convert ${currency} to EUR. Check the currency and try again.`;
+			formError = `Could not save expense or convert ${currency} to EUR.`;
 		} finally {
 			converting = false;
 		}
 	}
 
-	function removeExpense(id: string): void {
-		expenses = expenses.filter((e) => e.id !== id);
+	async function removeExpense(id: string): Promise<void> {
+		saving = true;
+		formError = '';
+		try {
+			const response = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+			if (!response.ok) {
+				formError = await readError(response);
+				return;
+			}
+			expenses = expenses.filter((expense) => expense.id !== id);
+		} catch (error) {
+			console.error(error);
+			formError = 'Could not remove expense. Check the database connection.';
+		} finally {
+			saving = false;
+		}
 	}
 
-	function clearAll(): void {
+	async function clearAll(): Promise<void> {
 		if (!confirm('Clear all people and expenses?')) return;
-		people = [];
-		expenses = [];
-		paidBy = '';
-		splitAmong = [];
+
+		saving = true;
 		formError = '';
+		try {
+			const response = await fetch('/api/split', { method: 'DELETE' });
+			if (!response.ok) {
+				formError = await readError(response);
+				return;
+			}
+			people = [];
+			expenses = [];
+			paidBy = '';
+			splitAmong = [];
+		} catch (error) {
+			console.error(error);
+			formError = 'Could not clear data. Check the database connection.';
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
@@ -184,6 +250,18 @@
 				rel="noreferrer">Frankfurter</a
 			>, then balances show who owes whom.
 		</p>
+		{#if persistence === 'local'}
+			<p class="mt-2 text-sm text-zinc-500">
+				Saving to a local SQLite file until
+				<code class="rounded bg-zinc-100 px-1 py-0.5 text-xs">TURSO_DATABASE_URL</code>
+				and
+				<code class="rounded bg-zinc-100 px-1 py-0.5 text-xs">TURSO_AUTH_TOKEN</code>
+				are set in
+				<code class="rounded bg-zinc-100 px-1 py-0.5 text-xs">.env</code>.
+			</p>
+		{:else}
+			<p class="mt-2 text-sm text-emerald-700">Connected to Turso.</p>
+		{/if}
 	</header>
 
 	{#if formError}
@@ -206,8 +284,9 @@
 			{#if people.length || expenses.length}
 				<button
 					type="button"
-					class="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline"
-					onclick={clearAll}
+					class="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline disabled:opacity-60"
+					disabled={saving}
+					onclick={() => void clearAll()}
 				>
 					Clear all
 				</button>
@@ -218,7 +297,7 @@
 			class="flex flex-col gap-2 sm:flex-row"
 			onsubmit={(event) => {
 				event.preventDefault();
-				addPerson();
+				void addPerson();
 			}}
 		>
 			<input
@@ -227,10 +306,12 @@
 				placeholder="Name"
 				bind:value={newPersonName}
 				autocomplete="off"
+				disabled={saving}
 			/>
 			<button
 				type="submit"
-				class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+				class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:opacity-60"
+				disabled={saving}
 			>
 				Add person
 			</button>
@@ -245,9 +326,10 @@
 						{person.name}
 						<button
 							type="button"
-							class="text-zinc-400 hover:text-red-600"
+							class="text-zinc-400 hover:text-red-600 disabled:opacity-60"
 							aria-label={`Remove ${person.name}`}
-							onclick={() => removePerson(person.id)}
+							disabled={saving}
+							onclick={() => void removePerson(person.id)}
 						>
 							×
 						</button>
@@ -281,7 +363,7 @@
 					type="text"
 					placeholder="Dinner, train tickets, hotel…"
 					bind:value={description}
-					disabled={!people.length}
+					disabled={!people.length || converting}
 				/>
 			</label>
 
@@ -295,7 +377,7 @@
 					inputmode="decimal"
 					placeholder="0.00"
 					bind:value={amount}
-					disabled={!people.length}
+					disabled={!people.length || converting}
 				/>
 			</label>
 
@@ -306,7 +388,7 @@
 				<select
 					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-500"
 					bind:value={currency}
-					disabled={currenciesLoading || !people.length}
+					disabled={currenciesLoading || !people.length || converting}
 				>
 					{#if currenciesLoading}
 						<option value={currency}>Loading…</option>
@@ -325,7 +407,7 @@
 				<select
 					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-500"
 					bind:value={paidBy}
-					disabled={!people.length}
+					disabled={!people.length || converting}
 				>
 					{#each people as person (person.id)}
 						<option value={person.id}>{person.name}</option>
@@ -379,7 +461,7 @@
 					class="rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!people.length || converting}
 				>
-					{converting ? 'Converting…' : 'Add expense'}
+					{converting ? 'Saving…' : 'Add expense'}
 				</button>
 			</div>
 		</form>
@@ -424,8 +506,9 @@
 						</div>
 						<button
 							type="button"
-							class="shrink-0 self-start text-sm text-zinc-400 hover:text-red-600"
-							onclick={() => removeExpense(expense.id)}
+							class="shrink-0 self-start text-sm text-zinc-400 hover:text-red-600 disabled:opacity-60"
+							disabled={saving}
+							onclick={() => void removeExpense(expense.id)}
 						>
 							Remove
 						</button>
