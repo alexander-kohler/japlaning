@@ -401,7 +401,9 @@
 				{/each}
 			</div>
 
-			<div class="relative h-full rounded-md border border-zinc-200 bg-zinc-50/70 px-1 pr-7 sm:pr-9">
+			<div
+				class="relative h-full rounded-md border border-zinc-200 bg-zinc-50/70 px-1 pr-7 sm:pr-9"
+			>
 				{#each itemSegments as segment}
 					<div
 						class={`absolute left-0.5 right-6 overflow-hidden rounded-md border px-1.5 py-1 shadow-sm sm:left-1 sm:right-8 sm:px-2 sm:py-1.5 ${
@@ -412,7 +414,9 @@
 						style={`top: ${segment.top}px; height: ${segment.height}px;`}
 						title={`${segment.name} (${formatTimeRange(segment.start, segment.end)})`}
 					>
-						<div class="break-words pr-1 text-[13px] font-semibold leading-4 text-zinc-900 sm:text-sm sm:leading-5">
+						<div
+							class="break-words pr-1 text-[13px] font-semibold leading-4 text-zinc-900 sm:text-sm sm:leading-5"
+						>
 							{itemEmoji(segment.kind ?? 'transit')}
 							{segment.name}
 						</div>
@@ -423,7 +427,7 @@
 							<a
 								href={googleMapsUrl(segment.name)}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="noopener noreferrer external"
 								class="mt-1 inline-flex items-center rounded border border-sky-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-sky-700 shadow-sm transition hover:bg-sky-50 sm:text-[11px]"
 								aria-label={`Open ${segment.name} in Google Maps`}
 							>
