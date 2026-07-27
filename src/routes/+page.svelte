@@ -7,6 +7,7 @@
 		name: string;
 		start: string;
 		end: string;
+		bookingUrl?: string;
 	};
 
 	type CarRental = {
@@ -25,6 +26,7 @@
 	const BASE_TRANSIT_CARD_HEIGHT = 48;
 	const LINE_HEIGHT = 18;
 	const TRANSIT_LINE_HEIGHT = 20;
+	const ACTION_BUTTONS_HEIGHT = 24;
 	const CARD_GAP = 1;
 
 	let tableSection: HTMLElement;
@@ -58,6 +60,7 @@
 		end: string;
 		kind?: string;
 		emoji?: string;
+		bookingUrl?: string;
 	};
 
 	type RawSegment = {
@@ -69,6 +72,7 @@
 		endMs: number;
 		kind?: string;
 		emoji?: string;
+		bookingUrl?: string;
 		minHeight: number;
 	};
 
@@ -84,7 +88,7 @@
 		const endMs = new Date(item.end).getTime();
 		const minHeight =
 			item.kind === 'accommodation'
-				? desiredCardHeight(`${itemEmoji(item.kind)} ${item.name}`)
+				? desiredCardHeight(`${itemEmoji(item.kind)} ${item.name}`) + ACTION_BUTTONS_HEIGHT
 				: desiredCardHeight(
 						`${itemEmoji(item.kind)} ${item.name}`,
 						BASE_TRANSIT_CARD_HEIGHT,
@@ -99,6 +103,7 @@
 			endMs,
 			kind: item.kind,
 			emoji: transitEmoji(item.kind),
+			bookingUrl: item.bookingUrl,
 			minHeight
 		};
 	});
@@ -127,6 +132,7 @@
 		end: segment.end,
 		kind: segment.kind,
 		emoji: segment.emoji,
+		bookingUrl: segment.bookingUrl,
 		top: pxFromMs(segment.startMs),
 		height: scaledHeightFromMs(segment.startMs, segment.endMs, segment.minHeight)
 	}));
@@ -337,6 +343,17 @@
 		if (kind === 'plane') return '✈️';
 		return '🚆';
 	}
+
+	function googleMapsUrl(name: string): string {
+		return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
+	}
+
+	function bookingLabel(url: string): string {
+		const lower = url.toLowerCase();
+		if (lower.includes('airbnb.')) return 'Airbnb';
+		if (lower.includes('booking.com')) return 'Booking.com';
+		return 'Booking';
+	}
 </script>
 
 <main class="mx-auto max-w-7xl px-1.5 py-3 sm:px-2 md:px-3">
@@ -396,7 +413,9 @@
 				{/each}
 			</div>
 
-			<div class="relative h-full rounded-md border border-zinc-200 bg-zinc-50/70 px-1 pr-7 sm:pr-9">
+			<div
+				class="relative h-full rounded-md border border-zinc-200 bg-zinc-50/70 px-1 pr-7 sm:pr-9"
+			>
 				{#each itemSegments as segment}
 					<div
 						class={`absolute left-0.5 right-6 overflow-hidden rounded-md border px-1.5 py-1 shadow-sm sm:left-1 sm:right-8 sm:px-2 sm:py-1.5 ${
@@ -407,13 +426,39 @@
 						style={`top: ${segment.top}px; height: ${segment.height}px;`}
 						title={`${segment.name} (${formatTimeRange(segment.start, segment.end)})`}
 					>
-						<div class="break-words pr-1 text-[13px] font-semibold leading-4 text-zinc-900 sm:text-sm sm:leading-5">
+						<div
+							class="break-words pr-1 text-[13px] font-semibold leading-4 text-zinc-900 sm:text-sm sm:leading-5"
+						>
 							{itemEmoji(segment.kind ?? 'transit')}
 							{segment.name}
 						</div>
 						<p class="text-[11px] leading-4 text-zinc-500 sm:text-xs sm:leading-5">
 							{formatTimeRange(segment.start, segment.end)}
 						</p>
+						{#if segment.kind === 'accommodation'}
+							<div class="mt-1 flex flex-wrap gap-1">
+								<a
+									href={googleMapsUrl(segment.name)}
+									target="_blank"
+									rel="noopener noreferrer external"
+									class="inline-flex items-center rounded border border-sky-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-sky-700 shadow-sm transition hover:bg-sky-50 sm:text-[11px]"
+									aria-label={`Open ${segment.name} in Google Maps`}
+								>
+									Google Maps
+								</a>
+								{#if segment.bookingUrl}
+									<a
+										href={segment.bookingUrl}
+										target="_blank"
+										rel="noopener noreferrer external"
+										class="inline-flex items-center rounded border border-sky-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-sky-700 shadow-sm transition hover:bg-sky-50 sm:text-[11px]"
+										aria-label={`Open ${segment.name} on ${bookingLabel(segment.bookingUrl)}`}
+									>
+										{bookingLabel(segment.bookingUrl)}
+									</a>
+								{/if}
+							</div>
+						{/if}
 					</div>
 				{/each}
 
