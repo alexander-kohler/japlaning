@@ -7,20 +7,8 @@
 		<div>
 			<p class="text-sm font-semibold tracking-tight text-zinc-900">Reiseplaner</p>
 			<h1 class="mt-3 text-xl font-semibold tracking-tight text-zinc-900">Sign in</h1>
-			<p class="mt-1 text-sm text-zinc-500">Enter your name and the shared password.</p>
+			<p class="mt-1 text-sm text-zinc-500">Enter the shared password.</p>
 		</div>
-
-		<label class="block space-y-1.5">
-			<span class="text-sm font-medium text-zinc-700">Username</span>
-			<input
-				name="username"
-				type="text"
-				autocomplete="username"
-				required
-				value={form?.username ?? ''}
-				class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500"
-			/>
-		</label>
 
 		<label class="block space-y-1.5">
 			<span class="text-sm font-medium text-zinc-700">Password</span>

@@ -9,18 +9,13 @@ export const load: PageServerLoad = async () => {
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {
 		const form = await request.formData();
-		const username = String(form.get('username') ?? '').trim();
 		const password = String(form.get('password') ?? '');
 
-		if (!username) {
-			return fail(400, { username, error: 'Enter a username.' });
-		}
-
 		if (!isValidPassword(password)) {
-			return fail(401, { username, error: 'Wrong password.' });
+			return fail(401, { error: 'Wrong password.' });
 		}
 
-		setAuthCookies(cookies, username, password);
+		setAuthCookies(cookies, password);
 		throw redirect(303, '/');
 	}
 };

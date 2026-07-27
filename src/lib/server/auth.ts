@@ -16,16 +16,10 @@ export function isValidPassword(password: string): boolean {
 }
 
 export function isAuthenticated(cookies: Cookies): boolean {
-	const user = cookies.get(USER_COOKIE)?.trim();
-	const auth = cookies.get(AUTH_COOKIE);
-	return Boolean(user) && auth === getAppPassword();
+	return cookies.get(AUTH_COOKIE) === getAppPassword();
 }
 
-export function getUsername(cookies: Cookies): string | null {
-	return cookies.get(USER_COOKIE)?.trim() || null;
-}
-
-export function setAuthCookies(cookies: Cookies, username: string, password: string): void {
+export function setAuthCookies(cookies: Cookies, password: string): void {
 	const options = {
 		path: '/',
 		maxAge: ONE_YEAR_S,
@@ -34,8 +28,8 @@ export function setAuthCookies(cookies: Cookies, username: string, password: str
 		secure: !dev
 	};
 
-	cookies.set(USER_COOKIE, username.trim(), options);
 	cookies.set(AUTH_COOKIE, password, options);
+	cookies.delete(USER_COOKIE, { path: '/' });
 }
 
 export function clearAuthCookies(cookies: Cookies): void {

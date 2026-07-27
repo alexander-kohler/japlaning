@@ -33,18 +33,15 @@
 						{link.label}
 					</a>
 				{/each}
-				{#if data.username}
-					<div class="ml-auto flex items-center gap-2">
-						<span class="text-sm text-zinc-500">{data.username}</span>
-						<form method="POST" action="/logout">
-							<button
-								type="submit"
-								class="rounded-md px-2.5 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-							>
-								Log out
-							</button>
-						</form>
-					</div>
+				{#if data.authenticated}
+					<form method="POST" action="/logout" class="ml-auto">
+						<button
+							type="submit"
+							class="rounded-md px-2.5 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+						>
+							Log out
+						</button>
+					</form>
 				{/if}
 			</div>
 		</nav>
