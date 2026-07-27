@@ -7,9 +7,10 @@ export const travelItems = {
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Tokyo',
+			name: 'Kise早i, Shinjuku',
 			start: '2026-08-12T16:00',
-			end: '2026-08-16T09:00',
+			end: '2026-08-17T10:00',
+			address: '107-5 Wasedatsurumakichō, Shinjuku, Tokyo 162-0041, Japan',
 			activities: [
 				{
 					id: generateId(),
@@ -28,21 +29,22 @@ export const travelItems = {
 			id: generateId(),
 			kind: 'plane',
 			name: 'Tokyo -> Matsuyama',
-			start: '2026-08-16T10:00',
-			end: '2026-08-16T12:00'
+			start: '2026-08-17T10:00',
+			end: '2026-08-17T12:00'
 		},
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Matsuyama',
-			start: '2026-08-16T16:00',
-			end: '2026-08-19T09:00',
+			name: '４１㎡ファミリー向け、２寝室、５名, Matsuyama',
+			start: '2026-08-17T15:00',
+			end: '2026-08-19T10:00',
+			address: '1-chōme-13-3 Yanaimachi, Matsuyama, Ehime 790-0014, Japan',
 			bookingUrl: ''
 		},
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Takamatsu',
+			name: '福宿 Fukuinn 302号室, Takamatsu',
 			start: '2026-08-19T16:00',
 			end: '2026-08-22T09:00',
 			bookingUrl: ''
@@ -50,7 +52,7 @@ export const travelItems = {
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Naruto',
+			name: 'Toyoko Inn Tokushima eki Bizan guchi, Tokushima',
 			start: '2026-08-22T16:00',
 			end: '2026-08-24T09:00',
 			bookingUrl: ''
@@ -58,7 +60,7 @@ export const travelItems = {
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Kobe',
+			name: 'Hotel Meriken Port Kobe Motomachi, Kōbe',
 			start: '2026-08-24T16:00',
 			end: '2026-08-26T09:00',
 			bookingUrl: ''
@@ -114,7 +116,7 @@ export const travelItems = {
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Osaka',
+			name: '星之宿今宫, Osaka',
 			start: '2026-09-06T16:00',
 			end: '2026-09-08T09:00',
 			bookingUrl: ''
@@ -129,7 +131,7 @@ export const travelItems = {
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Fukuoka',
+			name: 'Rakuten STAY Fukuoka Yakuin, Fukuoka',
 			start: '2026-09-09T16:00',
 			end: '2026-09-11T09:00',
 			bookingUrl: ''
@@ -241,7 +243,7 @@ export const travelItems = {
 		{
 			id: generateId(),
 			kind: 'accommodation',
-			name: 'Tokyo',
+			name: 'The Hedistar Hotel Narita, Narita',
 			start: '2026-10-11T16:00',
 			end: '2026-10-13T09:00',
 			bookingUrl: ''
