@@ -25,6 +25,7 @@
 	const BASE_TRANSIT_CARD_HEIGHT = 48;
 	const LINE_HEIGHT = 18;
 	const TRANSIT_LINE_HEIGHT = 20;
+	const MAPS_BUTTON_HEIGHT = 24;
 	const CARD_GAP = 1;
 
 	let tableSection: HTMLElement;
@@ -84,7 +85,7 @@
 		const endMs = new Date(item.end).getTime();
 		const minHeight =
 			item.kind === 'accommodation'
-				? desiredCardHeight(`${itemEmoji(item.kind)} ${item.name}`)
+				? desiredCardHeight(`${itemEmoji(item.kind)} ${item.name}`) + MAPS_BUTTON_HEIGHT
 				: desiredCardHeight(
 						`${itemEmoji(item.kind)} ${item.name}`,
 						BASE_TRANSIT_CARD_HEIGHT,
@@ -337,6 +338,10 @@
 		if (kind === 'plane') return '✈️';
 		return '🚆';
 	}
+
+	function googleMapsUrl(name: string): string {
+		return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
+	}
 </script>
 
 <main class="mx-auto max-w-7xl px-1.5 py-3 sm:px-2 md:px-3">
@@ -414,6 +419,17 @@
 						<p class="text-[11px] leading-4 text-zinc-500 sm:text-xs sm:leading-5">
 							{formatTimeRange(segment.start, segment.end)}
 						</p>
+						{#if segment.kind === 'accommodation'}
+							<a
+								href={googleMapsUrl(segment.name)}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="mt-1 inline-flex items-center rounded border border-sky-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-sky-700 shadow-sm transition hover:bg-sky-50 sm:text-[11px]"
+								aria-label={`Open ${segment.name} in Google Maps`}
+							>
+								Google Maps
+							</a>
+						{/if}
 					</div>
 				{/each}
 
