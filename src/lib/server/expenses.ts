@@ -104,6 +104,44 @@ export async function insertExpense(expense: Expense): Promise<Expense> {
 	return expense;
 }
 
+export async function updateExpense(expense: Expense): Promise<Expense | null> {
+	const db = await ensureSchema();
+
+	const existing = await db.execute({
+		sql: 'SELECT id FROM expenses WHERE id = ?',
+		args: [expense.id]
+	});
+	if (!existing.rows.length) return null;
+
+	const statements = [
+		{
+			sql: `UPDATE expenses
+				SET description = ?, amount = ?, currency = ?, amount_eur = ?, paid_by = ?, created_at = ?
+				WHERE id = ?`,
+			args: [
+				expense.description,
+				expense.amount,
+				expense.currency,
+				expense.amountEur,
+				expense.paidBy,
+				expense.createdAt,
+				expense.id
+			]
+		},
+		{
+			sql: 'DELETE FROM expense_splits WHERE expense_id = ?',
+			args: [expense.id]
+		},
+		...expense.splitAmong.map((personId) => ({
+			sql: 'INSERT INTO expense_splits (expense_id, person_id) VALUES (?, ?)',
+			args: [expense.id, personId]
+		}))
+	];
+
+	await db.batch(statements, 'write');
+	return expense;
+}
+
 export async function deleteExpense(id: string): Promise<void> {
 	const db = await ensureSchema();
 	await db.batch(
