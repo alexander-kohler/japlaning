@@ -1,4 +1,5 @@
 import { error, json } from '@sveltejs/kit';
+import { ALLOWED_CURRENCIES } from '$lib/currency';
 import { createId, type Expense } from '$lib/expenses';
 import { insertExpense, listExpenses, listPeople } from '$lib/server/expenses';
 import type { RequestHandler } from './$types';
@@ -16,6 +17,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		amountEur?: number;
 		paidBy?: string;
 		splitAmong?: string[];
+		createdAt?: string;
 	};
 
 	const description = body.description?.trim() ?? '';
@@ -26,13 +28,19 @@ export const POST: RequestHandler = async ({ request }) => {
 	const splitAmong = Array.isArray(body.splitAmong)
 		? [...new Set(body.splitAmong.map(String))]
 		: [];
+	const createdAtRaw = body.createdAt?.trim() ?? '';
+	const createdAtDate = createdAtRaw ? new Date(createdAtRaw) : new Date();
 
 	if (!description) throw error(400, 'Description is required');
 	if (!Number.isFinite(amount) || amount <= 0) throw error(400, 'Invalid amount');
 	if (!Number.isFinite(amountEur) || amountEur < 0) throw error(400, 'Invalid EUR amount');
 	if (!currency) throw error(400, 'Currency is required');
+	if (!ALLOWED_CURRENCIES.has(currency)) {
+		throw error(400, 'Currency must be EUR or JPY');
+	}
 	if (!paidBy) throw error(400, 'paidBy is required');
 	if (!splitAmong.length) throw error(400, 'splitAmong is required');
+	if (Number.isNaN(createdAtDate.getTime())) throw error(400, 'Invalid date and time');
 
 	const people = await listPeople();
 	const personIds = new Set(people.map((person) => person.id));
@@ -49,7 +57,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		amountEur,
 		paidBy,
 		splitAmong,
-		createdAt: new Date().toISOString()
+		createdAt: createdAtDate.toISOString()
 	};
 
 	await insertExpense(expense);

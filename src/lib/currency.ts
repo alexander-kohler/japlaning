@@ -16,6 +16,8 @@ type RateResponse = {
 	rate: number;
 };
 
+export const ALLOWED_CURRENCIES = new Set(['EUR', 'JPY']);
+
 let currenciesCache: Currency[] | null = null;
 const rateToEurCache = new Map<string, number>();
 
@@ -29,7 +31,11 @@ export async function fetchCurrencies(): Promise<Currency[]> {
 
 	const data = (await response.json()) as Currency[];
 	currenciesCache = data
-		.filter((currency) => Boolean(currency.iso_code && currency.name))
+		.filter(
+			(currency) =>
+				Boolean(currency.iso_code && currency.name) &&
+				ALLOWED_CURRENCIES.has(currency.iso_code.toUpperCase())
+		)
 		.sort((a, b) => a.iso_code.localeCompare(b.iso_code));
 
 	return currenciesCache;

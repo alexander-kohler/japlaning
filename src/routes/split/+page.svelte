@@ -26,12 +26,27 @@
 	let description = $state('');
 	let amount = $state('');
 	let currency = $state('EUR');
+	let occurredAt = $state(toDatetimeLocalValue(new Date()));
 	let paidBy = $state('');
 	let splitAmong = $state<string[]>([]);
 
 	const balances = $derived(computeBalances(people, expenses));
 	const settlements = $derived(computeSettlements(balances));
 	const totalEur = $derived(expenses.reduce((sum, expense) => sum + (expense.amountEur || 0), 0));
+
+	function toDatetimeLocalValue(date: Date): string {
+		const pad = (n: number) => String(n).padStart(2, '0');
+		return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+	}
+
+	function formatExpenseWhen(iso: string): string {
+		const date = new Date(iso);
+		if (Number.isNaN(date.getTime())) return '';
+		return new Intl.DateTimeFormat(undefined, {
+			dateStyle: 'medium',
+			timeStyle: 'short'
+		}).format(date);
+	}
 
 	$effect(() => {
 		people = data.people;
@@ -53,8 +68,11 @@
 			}
 		} catch (error) {
 			console.error(error);
-			currenciesError = 'Could not load currencies from Frankfurter. You can still use EUR.';
-			currencies = [{ iso_code: 'EUR', name: 'Euro', symbol: '€' }];
+			currenciesError = 'Could not load currencies from Frankfurter. Using local EUR / JPY list.';
+			currencies = [
+				{ iso_code: 'EUR', name: 'Euro', symbol: '€' },
+				{ iso_code: 'JPY', name: 'Japanese Yen', symbol: '¥' }
+			];
 		} finally {
 			currenciesLoading = false;
 		}
@@ -163,6 +181,12 @@
 			return;
 		}
 
+		const when = new Date(occurredAt);
+		if (!occurredAt || Number.isNaN(when.getTime())) {
+			formError = 'Enter a valid date and time.';
+			return;
+		}
+
 		converting = true;
 		try {
 			const amountEur = await convertToEur(parsedAmount, currency);
@@ -175,7 +199,8 @@
 					currency: currency.toUpperCase(),
 					amountEur,
 					paidBy,
-					splitAmong
+					splitAmong,
+					createdAt: when.toISOString()
 				})
 			});
 
@@ -185,9 +210,12 @@
 			}
 
 			const payload = (await response.json()) as { expense: Expense };
-			expenses = [payload.expense, ...expenses];
+			expenses = [payload.expense, ...expenses].sort((a, b) =>
+				b.createdAt.localeCompare(a.createdAt)
+			);
 			description = '';
 			amount = '';
+			occurredAt = toDatetimeLocalValue(new Date());
 		} catch (error) {
 			console.error(error);
 			formError = `Could not save expense or convert ${currency} to EUR.`;
@@ -240,16 +268,6 @@
 
 <main class="mx-auto max-w-4xl px-3 py-6 sm:px-4">
 	<header class="mb-6">
-		<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">Cost split</h1>
-		<p class="mt-1 text-sm text-zinc-500">
-			Add shared expenses in any currency. Amounts convert to euro via
-			<a
-				class="underline decoration-zinc-300 underline-offset-2 hover:text-zinc-700"
-				href="https://frankfurter.dev/"
-				target="_blank"
-				rel="noreferrer">Frankfurter</a
-			>, then balances show who owes whom.
-		</p>
 		{#if persistence === 'local'}
 			<p class="mt-2 text-sm text-zinc-500">
 				Saving to a local SQLite file until
@@ -279,7 +297,6 @@
 		<div class="mb-3 flex items-end justify-between gap-3">
 			<div>
 				<h2 id="people-heading" class="text-lg font-semibold text-zinc-900">People</h2>
-				<p class="text-sm text-zinc-500">Who is splitting costs on this trip.</p>
 			</div>
 			{#if people.length || expenses.length}
 				<button
@@ -343,9 +360,6 @@
 
 	<section class="mb-8" aria-labelledby="expense-heading">
 		<h2 id="expense-heading" class="text-lg font-semibold text-zinc-900">Add expense</h2>
-		<p class="mb-3 text-sm text-zinc-500">
-			Record what was paid, in which currency, and who should share it.
-		</p>
 
 		<form
 			class="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-2"
@@ -398,6 +412,18 @@
 						{/each}
 					{/if}
 				</select>
+			</label>
+
+			<label class="block sm:col-span-2">
+				<span class="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500"
+					>Date & time</span
+				>
+				<input
+					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-500"
+					type="datetime-local"
+					bind:value={occurredAt}
+					disabled={!people.length || converting}
+				/>
 			</label>
 
 			<label class="block sm:col-span-2">
@@ -471,7 +497,6 @@
 		<div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
 			<div>
 				<h2 id="list-heading" class="text-lg font-semibold text-zinc-900">Expenses</h2>
-				<p class="text-sm text-zinc-500">Original currency kept; euro used for settling up.</p>
 			</div>
 			{#if expenses.length}
 				<p class="text-sm font-medium text-zinc-700">Total {formatEur(totalEur)}</p>
@@ -492,6 +517,9 @@
 					<li class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
 						<div class="min-w-0">
 							<p class="font-medium text-zinc-900">{expense.description}</p>
+							<p class="mt-0.5 text-sm text-zinc-500">
+								{formatExpenseWhen(expense.createdAt)}
+							</p>
 							<p class="mt-0.5 text-sm text-zinc-500">
 								{personName(expense.paidBy)} paid
 								{formatMoney(expense.amount, expense.currency)}
@@ -550,7 +578,6 @@
 
 	<section aria-labelledby="settle-heading">
 		<h2 id="settle-heading" class="text-lg font-semibold text-zinc-900">Who owes whom</h2>
-		<p class="mb-3 text-sm text-zinc-500">Minimal transfers to settle everything in euro.</p>
 
 		{#if settlements.length === 0}
 			<p
