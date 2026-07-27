@@ -34,8 +34,17 @@
 
 	const balances = $derived(computeBalances(people, expenses));
 	const settlements = $derived(computeSettlements(balances));
-	const totalEur = $derived(expenses.reduce((sum, expense) => sum + (expense.amountEur || 0), 0));
+	const totalEur = $derived(
+		expenses
+			.filter((expense) => !isPersonToPersonPayment(expense))
+			.reduce((sum, expense) => sum + (expense.amountEur || 0), 0)
+	);
 	const expensesByDate = $derived(groupExpensesByDate(expenses));
+
+	/** A paid B only — settlement/transfer, not shared spending. */
+	function isPersonToPersonPayment(expense: Expense): boolean {
+		return expense.splitAmong.length === 1 && expense.splitAmong[0] !== expense.paidBy;
+	}
 
 	function toDatetimeLocalValue(date: Date): string {
 		const pad = (n: number) => String(n).padStart(2, '0');
