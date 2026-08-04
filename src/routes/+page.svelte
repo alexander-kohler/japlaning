@@ -1,30 +1,12 @@
 <script lang="ts">
-	import { travelItems } from '$lib/data';
-
-	type Activity = {
-		id: string;
-		name: string;
-		start?: string;
-		end?: string;
-	};
-
-	type TimelineItem = {
-		id: string;
-		kind: string;
-		name: string;
-		start: string;
-		end: string;
-		address?: string;
-		bookingUrl?: string;
-		activities?: Activity[];
-	};
-
-	type CarRental = {
-		id: string;
-		name: string;
-		start: string;
-		end: string;
-	};
+	import { resolve } from '$app/paths';
+	import {
+		splitNameAndLocation,
+		travelItems,
+		type Activity,
+		type CarRental,
+		type TravelItem
+	} from '$lib/data';
 
 	type CardItem = {
 		id: string;
@@ -78,10 +60,10 @@
 	let isExporting = $state(false);
 	let exportError = $state('');
 
-	const items = [...(travelItems.items as TimelineItem[])].sort(
-		(a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+	const items = [...travelItems.items].sort(
+		(a: TravelItem, b: TravelItem) => new Date(a.start).getTime() - new Date(b.start).getTime()
 	);
-	const cars = travelItems.cars as CarRental[];
+	const cars: CarRental[] = travelItems.cars;
 
 	const cardItems: CardItem[] = items.map((item, index) => {
 		const startMs = new Date(item.start).getTime();
@@ -255,9 +237,7 @@
 	);
 
 	const todayCardId = $derived(
-		todayAlreadyLabeled
-			? undefined
-			: cardItems.find((item) => cardCoversToday(item))?.id
+		todayAlreadyLabeled ? undefined : cardItems.find((item) => cardCoversToday(item))?.id
 	);
 
 	function formatCompactDateTime(value: string): string {
@@ -298,22 +278,6 @@
 		}
 
 		return `${formatCompactDateTime(start)} → ${formatCompactDateTime(end)}`;
-	}
-
-	function splitNameAndLocation(name: string): { displayName: string; location: string } {
-		if (/\s*->\s*/.test(name)) {
-			return { displayName: name, location: '' };
-		}
-
-		const commaIndex = name.lastIndexOf(',');
-		if (commaIndex === -1) {
-			return { displayName: name, location: '' };
-		}
-
-		return {
-			displayName: name.slice(0, commaIndex).trim(),
-			location: name.slice(commaIndex + 1).trim()
-		};
 	}
 
 	function toStartOfDay(ms: number): number {
@@ -446,9 +410,7 @@
 			<span
 				class="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-sky-600 tabular-nums sm:order-last"
 			>
-				<span
-					class="h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
-					aria-hidden="true"
+				<span class="h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-500/20" aria-hidden="true"
 				></span>
 				{formatDateLabel(todayMs)}
 			</span>
@@ -482,10 +444,7 @@
 					{@const dateRails = carRailForDateBefore(row.beforeIndex)}
 					{@const current = isCurrentDay(row.dayKey)}
 					{@const parts = formatDateParts(row.dayKey)}
-					<div
-						class="flex items-center justify-end gap-1"
-						style={`margin-block: -${DATE_PULL}px;`}
-					>
+					<div class="flex items-center justify-end gap-1" style={`margin-block: -${DATE_PULL}px;`}>
 						{#if current}
 							<span
 								class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
@@ -519,7 +478,10 @@
 						style={`margin-bottom: -${CARD_GAP + DATE_PULL}px; padding-bottom: ${CARD_GAP + DATE_PULL}px; margin-top: -${CARD_GAP + DATE_PULL}px; padding-top: ${CARD_GAP + DATE_PULL}px;`}
 					>
 						{#each dateRails as span (span.id)}
-							<div class="absolute inset-y-0 flex w-3.5 flex-col items-center sm:w-5" aria-hidden="true">
+							<div
+								class="absolute inset-y-0 flex w-3.5 flex-col items-center sm:w-5"
+								aria-hidden="true"
+							>
 								<span class="w-0.5 flex-1 rounded-full bg-amber-500"></span>
 							</div>
 						{/each}
@@ -573,23 +535,79 @@
 					</div>
 
 					<article
-						class="rounded-xl border border-zinc-200 bg-white shadow-sm"
+						class={`rounded-xl border border-zinc-200 bg-white shadow-sm ${
+							segment.kind === 'accommodation'
+								? 'transition hover:border-zinc-300 hover:shadow'
+								: ''
+						}`}
 						title={`${segment.name} (${formatTimeRange(segment.start, segment.end)})`}
 					>
 						<div class="flex items-start gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
-							<div
-								class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg sm:h-14 sm:w-14 sm:text-2xl ${thumbClasses(segment.kind)}`}
-								aria-hidden="true"
-							>
-								{thumbEmoji(segment.kind)}
-							</div>
-
-							<div class="min-w-0 flex-1">
-								<h3 class="text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base">
-									{segment.displayName}
-								</h3>
-								<div class="mt-0.5 flex items-end justify-between gap-2">
-									<div class="min-w-0">
+							{#if segment.kind === 'accommodation'}
+								<a
+									href={resolve('/accommodation/[id]', { id: segment.id })}
+									class="flex min-w-0 flex-1 items-start gap-2 sm:gap-3"
+									aria-label={`Open ${segment.displayName} details`}
+								>
+									<div
+										class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg sm:h-14 sm:w-14 sm:text-2xl ${thumbClasses(segment.kind)}`}
+										aria-hidden="true"
+									>
+										{thumbEmoji(segment.kind)}
+									</div>
+									<div class="min-w-0 flex-1">
+										<h3 class="text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base">
+											{segment.displayName}
+										</h3>
+										<p class="mt-0.5 text-[11px] leading-snug text-zinc-500 sm:text-xs">
+											{formatBookingDateRange(segment.start, segment.end, segment.kind)}
+										</p>
+										{#if segment.location || segment.kind}
+											<p class="mt-0.5 text-[11px] leading-snug text-zinc-400 sm:text-xs">
+												{[segment.location, kindLabel(segment.kind)].filter(Boolean).join(' · ')}
+											</p>
+										{/if}
+										{#if segment.activities.length}
+											<p class="mt-1 text-[11px] leading-snug text-sky-600 sm:text-xs">
+												{segment.activities.length}
+												{segment.activities.length === 1 ? 'activity' : 'activities'}
+											</p>
+										{/if}
+									</div>
+									<span class="shrink-0 self-center text-zinc-300" aria-hidden="true">›</span>
+								</a>
+								<a
+									href={googleMapsUrl(segment.address ?? segment.name)}
+									target="_blank"
+									rel="noopener noreferrer external"
+									class="inline-flex shrink-0 items-center gap-1.5 self-end rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 active:bg-zinc-100"
+									aria-label={`Open ${segment.name} in Google Maps`}
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										class="h-4 w-4"
+										aria-hidden="true"
+									>
+										<path
+											d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"
+										/>
+									</svg>
+									<span class="hidden text-xs font-medium sm:inline">Google Maps</span>
+								</a>
+							{:else}
+								<div
+									class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg sm:h-14 sm:w-14 sm:text-2xl ${thumbClasses(segment.kind)}`}
+									aria-hidden="true"
+								>
+									{thumbEmoji(segment.kind)}
+								</div>
+								<div class="min-w-0 flex-1">
+									<h3 class="text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base">
+										{segment.displayName}
+									</h3>
+									<div class="mt-0.5 min-w-0">
 										<p class="text-[11px] leading-snug text-zinc-500 sm:text-xs">
 											{formatBookingDateRange(segment.start, segment.end, segment.kind)}
 										</p>
@@ -599,67 +617,30 @@
 											</p>
 										{/if}
 									</div>
-									{#if segment.kind === 'accommodation'}
-										<a
-											href={googleMapsUrl(segment.address ?? segment.name)}
-											target="_blank"
-											rel="noopener noreferrer external"
-											class="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 active:bg-zinc-100"
-											aria-label={`Open ${segment.name} in Google Maps`}
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												viewBox="0 0 24 24"
-												fill="currentColor"
-												class="h-4 w-4"
-												aria-hidden="true"
-											>
-												<path
-													d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"
-												/>
-											</svg>
-											<span class="hidden text-xs font-medium sm:inline">Google Maps</span>
-										</a>
-									{/if}
 								</div>
-							</div>
+							{/if}
 						</div>
 
-						{#if (segment.kind === 'accommodation' && segment.bookingUrl) || segment.activities.length}
+						{#if segment.kind === 'accommodation' && segment.bookingUrl}
 							<ul class="border-t border-zinc-100">
-								{#if segment.kind === 'accommodation' && segment.bookingUrl}
-									<li class="border-b border-zinc-100 last:border-b-0">
-										<a
-											href={segment.bookingUrl}
-											target="_blank"
-											rel="noopener noreferrer external"
-											class="flex min-h-11 items-center gap-2.5 px-2.5 py-2.5 text-left transition hover:bg-zinc-50 active:bg-zinc-50 sm:min-h-0 sm:px-3"
-											aria-label={`Open ${segment.name} on ${bookingLabel(segment.bookingUrl)}`}
+								<li>
+									<a
+										href={segment.bookingUrl}
+										target="_blank"
+										rel="noopener noreferrer external"
+										class="flex min-h-11 items-center gap-2.5 px-2.5 py-2.5 text-left transition hover:bg-zinc-50 active:bg-zinc-50 sm:min-h-0 sm:px-3"
+										aria-label={`Open ${segment.name} on ${bookingLabel(segment.bookingUrl)}`}
+									>
+										<span
+											class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-sm"
+											aria-hidden="true">🔗</span
 										>
-											<span
-												class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-sm"
-												aria-hidden="true">🔗</span
-											>
-											<span class="min-w-0 flex-1 text-[12px] text-zinc-700 sm:text-sm"
-												>{bookingLabel(segment.bookingUrl)}</span
-											>
-											<span class="shrink-0 text-zinc-300" aria-hidden="true">›</span>
-										</a>
-									</li>
-								{/if}
-								{#each segment.activities as activity (activity.id)}
-									<li class="border-b border-zinc-100 last:border-b-0">
-										<div class="flex min-h-11 items-center gap-2.5 px-2.5 py-2.5 sm:min-h-0 sm:px-3">
-											<span
-												class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-sm"
-												aria-hidden="true">★</span
-											>
-											<span class="min-w-0 flex-1 text-[12px] text-zinc-700 sm:text-sm"
-												>{activity.name}</span
-											>
-										</div>
-									</li>
-								{/each}
+										<span class="min-w-0 flex-1 text-[12px] text-zinc-700 sm:text-sm"
+											>{bookingLabel(segment.bookingUrl)}</span
+										>
+										<span class="shrink-0 text-zinc-300" aria-hidden="true">›</span>
+									</a>
+								</li>
 							</ul>
 						{/if}
 					</article>
