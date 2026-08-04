@@ -1,11 +1,35 @@
-function generateId() {
-	return Math.random().toString(36).substring(2, 15);
-}
+export type Activity = {
+	id: string;
+	name: string;
+	start?: string;
+	end?: string;
+};
 
-export const travelItems = {
+export type TravelItem = {
+	id: string;
+	kind: 'accommodation' | 'plane' | 'ferry';
+	name: string;
+	start: string;
+	end: string;
+	address?: string;
+	bookingUrl?: string;
+	activities?: Activity[];
+};
+
+export type CarRental = {
+	id: string;
+	name: string;
+	start: string;
+	end: string;
+};
+
+export const travelItems: {
+	items: TravelItem[];
+	cars: CarRental[];
+} = {
 	items: [
 		{
-			id: generateId(),
+			id: 'kiseki-shinjuku',
 			kind: 'accommodation',
 			name: 'Kise早i, Shinjuku',
 			start: '2026-08-12T16:00',
@@ -13,27 +37,27 @@ export const travelItems = {
 			address: '107-5 Wasedatsurumakichō, Shinjuku, Tokyo 162-0041, Japan',
 			activities: [
 				{
-					id: generateId(),
+					id: 'tokyo-tower',
 					name: 'Visit Tokyo Tower',
 					start: '2026-08-12T16:00',
 					end: '2026-08-12T17:00'
 				},
 				{
-					id: generateId(),
+					id: 'tokyo-skytree',
 					name: 'Tokyo Skytree'
 				}
 			],
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'tokyo-matsuyama-flight',
 			kind: 'plane',
 			name: 'Tokyo -> Matsuyama',
 			start: '2026-08-17T10:00',
 			end: '2026-08-17T12:00'
 		},
 		{
-			id: generateId(),
+			id: 'family-matsuyama',
 			kind: 'accommodation',
 			name: '４１㎡ファミリー向け、２寝室、５名, Matsuyama',
 			start: '2026-08-17T15:00',
@@ -42,7 +66,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'fukuinn-takamatsu',
 			kind: 'accommodation',
 			name: '福宿 Fukuinn 302号室, Takamatsu',
 			start: '2026-08-19T16:00',
@@ -50,7 +74,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'toyoko-inn-tokushima',
 			kind: 'accommodation',
 			name: 'Toyoko Inn Tokushima eki Bizan guchi, Tokushima',
 			start: '2026-08-22T16:00',
@@ -58,7 +82,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'meriken-port-kobe',
 			kind: 'accommodation',
 			name: 'Hotel Meriken Port Kobe Motomachi, Kōbe',
 			start: '2026-08-24T16:00',
@@ -66,7 +90,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'ibis-styles-kyoto',
 			kind: 'accommodation',
 			name: 'ibis Styles Kyoto Shijo, Kyōto',
 			start: '2026-08-26T16:00',
@@ -74,7 +98,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'comfort-hotel-tanabe',
 			kind: 'accommodation',
 			name: 'Comfort Hotel Kii Tanabe, Tanabe',
 			start: '2026-09-01T16:00',
@@ -82,7 +106,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'guesthouse-yata-tanabe',
 			kind: 'accommodation',
 			name: 'ゲストハウス八咫, Tanabe',
 			start: '2026-09-02T16:00',
@@ -90,7 +114,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'cottage-kirihata-tanabe',
 			kind: 'accommodation',
 			name: 'Cottage Kirihata, Tanabe',
 			start: '2026-09-03T16:00',
@@ -98,7 +122,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'ikkyu-kobune',
 			kind: 'accommodation',
 			name: 'ikkyu rental vacation house, Kobune',
 			start: '2026-09-04T16:00',
@@ -106,7 +130,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'nachi-no-sato',
 			kind: 'accommodation',
 			name: '那智の里 Accommodation along the Kumano Kodo trail, Nachikatsuura',
 			start: '2026-09-05T16:00',
@@ -114,7 +138,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'hoshi-no-yado-osaka',
 			kind: 'accommodation',
 			name: '星之宿今宫, Osaka',
 			start: '2026-09-06T16:00',
@@ -122,14 +146,14 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'ferry-osaka-fukuoka',
 			kind: 'ferry',
 			name: 'Ferry Osaka -> Fukuoka',
 			start: '2026-09-08T19:30',
 			end: '2026-09-09T07:30'
 		},
 		{
-			id: generateId(),
+			id: 'rakuten-stay-fukuoka',
 			kind: 'accommodation',
 			name: 'Rakuten STAY Fukuoka Yakuin, Fukuoka',
 			start: '2026-09-09T16:00',
@@ -137,7 +161,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'grand-residence-tenjin',
 			kind: 'accommodation',
 			name: 'Grand Residence Hotel Tenjin, Fukuoka',
 			start: '2026-09-11T16:00',
@@ -145,7 +169,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'simple-stay-beppu',
 			kind: 'accommodation',
 			name: 'Simple Stay Beppu, Beppu',
 			start: '2026-09-12T16:00',
@@ -153,7 +177,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'shijin-minami-aso',
 			kind: 'accommodation',
 			name: '阿蘇山麓のヴィラShijin南阿蘇, Minami Aso',
 			start: '2026-09-14T16:00',
@@ -161,7 +185,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'fav-kumamoto',
 			kind: 'accommodation',
 			name: 'fav KUMAMOTO, Kumamoto',
 			start: '2026-09-16T16:00',
@@ -169,7 +193,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'zee-haven-nagasaki',
 			kind: 'accommodation',
 			name: 'Zee Haven nagasakiekimae – ZEE HAVEN長崎駅前, Nagasaki',
 			start: '2026-09-17T16:00',
@@ -177,7 +201,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'lotus-village-fukuoka',
 			kind: 'accommodation',
 			name: 'ロータスヴィレッジ, Fukuoka',
 			start: '2026-09-19T16:00',
@@ -185,7 +209,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'b-hotel-hiroshima',
 			kind: 'accommodation',
 			name: 'b hotel Heiwaodori 601, Hiroshima',
 			start: '2026-09-21T16:00',
@@ -193,7 +217,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'grand-base-kurashiki',
 			kind: 'accommodation',
 			name: 'GRAND BASE Kurashiki Chuo, Kurashiki',
 			start: '2026-09-24T16:00',
@@ -201,7 +225,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'wayfarer-matsu-osaka',
 			kind: 'accommodation',
 			name: 'WAYFARER Matsu, Osaka',
 			start: '2026-09-26T16:00',
@@ -209,7 +233,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'gee-haive-mishima',
 			kind: 'accommodation',
 			name: 'Hotel Gee Haive, Mishima',
 			start: '2026-10-01T16:00',
@@ -217,7 +241,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'villa-omodaka-oguchi',
 			kind: 'accommodation',
 			name: '一棟貸しVilla OMODAKA, Oguchi',
 			start: '2026-10-02T16:00',
@@ -225,7 +249,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'view-odawara',
 			kind: 'accommodation',
 			name: 'THE VIEW Odawara shiro-no mieru hotel – Vacation STAY 53335v, Odawara',
 			start: '2026-10-04T16:00',
@@ -233,7 +257,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'skytreehouse-sumida',
 			kind: 'accommodation',
 			name: 'Airbnb SkytreeHouse 東向島, Sumida City / Tokyo',
 			start: '2026-10-05T16:00',
@@ -241,7 +265,7 @@ export const travelItems = {
 			bookingUrl: ''
 		},
 		{
-			id: generateId(),
+			id: 'hedistar-narita',
 			kind: 'accommodation',
 			name: 'The Hedistar Hotel Narita, Narita',
 			start: '2026-10-11T16:00',
@@ -251,16 +275,36 @@ export const travelItems = {
 	],
 	cars: [
 		{
-			id: generateId(),
+			id: 'nico-nico-fukuoka',
 			name: 'Honda N-Box or similar, Nico Nico Rentacar, Fukuoka',
 			start: '2026-09-12T10:00',
 			end: '2026-09-19T18:00'
 		},
 		{
-			id: generateId(),
+			id: 'orix-oshima',
 			name: 'Daihatsu Move or similar, Orix, Oshima',
 			start: '2026-10-02T09:00',
 			end: '2026-10-04T17:00'
 		}
 	]
 };
+
+export function getAccommodationById(id: string): TravelItem | undefined {
+	return travelItems.items.find((item) => item.id === id && item.kind === 'accommodation');
+}
+
+export function splitNameAndLocation(name: string): { displayName: string; location: string } {
+	if (/\s*->\s*/.test(name)) {
+		return { displayName: name, location: '' };
+	}
+
+	const commaIndex = name.lastIndexOf(',');
+	if (commaIndex === -1) {
+		return { displayName: name, location: '' };
+	}
+
+	return {
+		displayName: name.slice(0, commaIndex).trim(),
+		location: name.slice(commaIndex + 1).trim()
+	};
+}

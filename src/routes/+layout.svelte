@@ -22,10 +22,13 @@
 			<div class="mx-auto flex max-w-7xl items-center gap-1 px-3 py-2 sm:px-4">
 				<span class="mr-3 text-sm font-semibold tracking-tight text-zinc-900">Japlaning</span>
 				{#each links as link (link.href)}
+					{@const active =
+						page.url.pathname === link.href ||
+						(link.href === '/' && page.url.pathname.startsWith('/accommodation'))}
 					<a
 						href={resolve(link.href)}
 						class={`rounded-md px-2.5 py-1.5 text-sm transition ${
-							page.url.pathname === link.href
+							active
 								? 'bg-zinc-900 text-white'
 								: 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
 						}`}
