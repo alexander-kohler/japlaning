@@ -5,11 +5,13 @@
 	let {
 		latitude,
 		longitude,
-		label = 'Current location'
+		label = 'Current location',
+		zoom = 12
 	}: {
 		latitude: number;
 		longitude: number;
 		label?: string;
+		zoom?: number;
 	} = $props();
 
 	let mapEl: HTMLDivElement | undefined = $state();
@@ -38,7 +40,7 @@
 		map = L.map(mapEl, {
 			zoomControl: true,
 			attributionControl: true
-		}).setView([latitude, longitude], 13);
+		}).setView([latitude, longitude], zoom);
 
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -54,7 +56,7 @@
 		if (!map || !marker) return;
 		marker.setLatLng([latitude, longitude]);
 		marker.bindPopup(label);
-		map.setView([latitude, longitude], map.getZoom());
+		map.setView([latitude, longitude], zoom);
 	});
 
 	onDestroy(() => {

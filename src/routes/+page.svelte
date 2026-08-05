@@ -3,9 +3,8 @@
 	import { resolve } from '$app/paths';
 	import LocationMap from '$lib/components/LocationMap.svelte';
 	import {
-		FALLBACK_LOCATION,
 		fetchWeather,
-		reverseGeocode,
+		resolveCurrentCityLocation,
 		type LocationInfo,
 		type WeatherCurrent
 	} from '$lib/weather';
@@ -13,8 +12,7 @@
 	let location = $state<LocationInfo | null>(null);
 	let weather = $state<WeatherCurrent | null>(null);
 	let status = $state<'loading' | 'ready' | 'error'>('loading');
-	let statusMessage = $state('Finding your location…');
-	let usedFallback = $state(false);
+	let statusMessage = $state('Finding current city…');
 	let now = $state(new Date());
 
 	let clockId: ReturnType<typeof setInterval> | undefined;
@@ -33,47 +31,17 @@
 
 	async function loadLocation(): Promise<void> {
 		status = 'loading';
-		statusMessage = 'Finding your location…';
+		statusMessage = 'Finding current city…';
 
 		try {
-			const coords = await getBrowserPosition();
-			const label = await reverseGeocode(coords.latitude, coords.longitude);
-			location = {
-				latitude: coords.latitude,
-				longitude: coords.longitude,
-				label,
-				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-			};
-			usedFallback = false;
-		} catch {
-			location = { ...FALLBACK_LOCATION };
-			usedFallback = true;
-			statusMessage = 'Location permission unavailable — showing Shinjuku.';
-		}
-
-		try {
+			location = await resolveCurrentCityLocation(new Date());
 			weather = await fetchWeather(location.latitude, location.longitude);
 			status = 'ready';
-			if (!usedFallback) statusMessage = '';
+			statusMessage = '';
 		} catch {
 			status = 'error';
-			statusMessage = 'Could not load weather for this location.';
+			statusMessage = 'Could not load location or weather.';
 		}
-	}
-
-	function getBrowserPosition(): Promise<GeolocationCoordinates> {
-		return new Promise((resolvePos, reject) => {
-			if (!navigator.geolocation) {
-				reject(new Error('Geolocation not supported'));
-				return;
-			}
-
-			navigator.geolocation.getCurrentPosition(
-				(pos) => resolvePos(pos.coords),
-				(err) => reject(err),
-				{ enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 }
-			);
-		});
 	}
 
 	const localTime = $derived(
@@ -105,7 +73,7 @@
 		<div class="min-w-0">
 			<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Where you are</h1>
 			<p class="mt-1 text-sm text-zinc-500">
-				Live map, local time, and weather for your current location.
+				Map, local time, and weather for the current city on the itinerary.
 			</p>
 		</div>
 		<a
@@ -132,6 +100,7 @@
 					latitude={location.latitude}
 					longitude={location.longitude}
 					label={location.label}
+					zoom={12}
 				/>
 			{:else}
 				<div
@@ -154,7 +123,7 @@
 				{#if location}
 					<p class="mt-3 text-sm text-zinc-600">{location.label}</p>
 					<p class="mt-0.5 text-xs text-zinc-400">
-						{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+						City center · {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
 						{#if location.timezone}
 							· {location.timezone}
 						{/if}
@@ -195,7 +164,7 @@
 				class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
 				onclick={() => void loadLocation()}
 			>
-				Refresh location
+				Refresh
 			</button>
 		</section>
 	</div>

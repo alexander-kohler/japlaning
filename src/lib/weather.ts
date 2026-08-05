@@ -1,3 +1,5 @@
+import { getCurrentTripCity } from '$lib/trip-location';
+
 /** WMO weather interpretation codes used by Open-Meteo. */
 export function weatherLabel(code: number): string {
 	if (code === 0) return 'Clear sky';
@@ -31,7 +33,89 @@ export type LocationInfo = {
 	longitude: number;
 	label: string;
 	timezone: string;
+	city: string;
 };
+
+type GeocodeResult = {
+	id: number;
+	name: string;
+	latitude: number;
+	longitude: number;
+	country_code?: string;
+	admin1?: string;
+	country?: string;
+	timezone?: string;
+};
+
+/** Overrides for itinerary labels that the geocoder mishandles. */
+const CITY_GEOCODE_ALIASES: Record<string, string> = {
+	'minami aso': 'Aso, Kumamoto',
+	nachikatsuura: 'Katsuura, Wakayama',
+	'sumida city / tokyo': 'Sumida, Tokyo'
+};
+
+/** Hardcoded city-center fallback (Shinjuku district center — not the stay address). */
+const SHINJUKU_CENTER: LocationInfo = {
+	latitude: 35.69115,
+	longitude: 139.70854,
+	label: 'Shinjuku, Tokyo, Japan',
+	timezone: 'Asia/Tokyo',
+	city: 'Shinjuku'
+};
+
+function formatCityLabel(result: GeocodeResult, fallbackCity: string): string {
+	const parts = [result.name || fallbackCity, result.admin1, result.country].filter(Boolean);
+	return parts.join(', ');
+}
+
+function geocodeQueriesForCity(city: string): string[] {
+	const alias = CITY_GEOCODE_ALIASES[city.trim().toLowerCase()];
+	const base = alias ?? city.trim();
+	const parts = base
+		.split('/')
+		.map((part) => part.trim())
+		.filter(Boolean);
+
+	const queries: string[] = [];
+	const push = (q: string) => {
+		if (q && !queries.includes(q)) queries.push(q);
+	};
+
+	push(`${base}, Japan`);
+	push(base);
+	for (const part of parts) {
+		push(`${part}, Japan`);
+		push(part);
+	}
+
+	return queries;
+}
+
+async function searchGeocode(name: string): Promise<GeocodeResult | null> {
+	const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
+	url.searchParams.set('name', name);
+	url.searchParams.set('count', '5');
+	url.searchParams.set('language', 'en');
+	url.searchParams.set('format', 'json');
+
+	const res = await fetch(url);
+	if (!res.ok) throw new Error('Geocoding request failed');
+
+	const data = (await res.json()) as { results?: GeocodeResult[] };
+	const results = data.results ?? [];
+	if (!results.length) return null;
+
+	return results.find((r) => r.country_code === 'JP') ?? results[0];
+}
+
+/** Resolve a city name to its geographic center (never a street address). */
+export async function geocodeCity(city: string): Promise<GeocodeResult | null> {
+	for (const query of geocodeQueriesForCity(city)) {
+		const result = await searchGeocode(query);
+		if (result) return result;
+	}
+	return null;
+}
 
 export async function fetchWeather(lat: number, lon: number): Promise<WeatherCurrent> {
 	const url = new URL('https://api.open-meteo.com/v1/forecast');
@@ -65,33 +149,25 @@ export async function fetchWeather(lat: number, lon: number): Promise<WeatherCur
 	};
 }
 
-export async function reverseGeocode(lat: number, lon: number): Promise<string> {
-	const url = new URL('https://api.bigdatacloud.net/data/reverse-geocode-client');
-	url.searchParams.set('latitude', String(lat));
-	url.searchParams.set('longitude', String(lon));
-	url.searchParams.set('localityLanguage', 'en');
+/**
+ * Current trip city, pinned at the city center from Open-Meteo geocoding.
+ * Uses the itinerary city name only — never accommodation street addresses.
+ */
+export async function resolveCurrentCityLocation(at: Date = new Date()): Promise<LocationInfo> {
+	const tripCity = getCurrentTripCity(at);
+	const city = tripCity?.city ?? 'Shinjuku';
 
-	const res = await fetch(url);
-	if (!res.ok) return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+	const result = await geocodeCity(city);
+	if (!result) {
+		if (city === 'Shinjuku') return { ...SHINJUKU_CENTER };
+		throw new Error(`Could not geocode city: ${city}`);
+	}
 
-	const data = (await res.json()) as {
-		city?: string;
-		locality?: string;
-		principalSubdivision?: string;
-		countryName?: string;
+	return {
+		latitude: result.latitude,
+		longitude: result.longitude,
+		label: formatCityLabel(result, city),
+		timezone: result.timezone || 'Asia/Tokyo',
+		city
 	};
-
-	const parts = [data.city || data.locality, data.principalSubdivision, data.countryName].filter(
-		Boolean
-	);
-
-	return parts.length ? parts.join(', ') : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 }
-
-/** Default fallback: Shinjuku — first stop on the itinerary. */
-export const FALLBACK_LOCATION: LocationInfo = {
-	latitude: 35.6938,
-	longitude: 139.7034,
-	label: 'Shinjuku, Tokyo, Japan',
-	timezone: 'Asia/Tokyo'
-};
