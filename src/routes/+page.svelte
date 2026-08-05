@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { resolve } from '$app/paths';
 	import LocationMap from '$lib/components/LocationMap.svelte';
 	import WeatherIcon from '$lib/components/WeatherIcon.svelte';
 	import {
@@ -66,20 +65,6 @@
 		})
 	);
 
-	/** Itinerary timestamps are Japan-local naive strings — format without TZ conversion. */
-	function formatStayRange(start: string, end: string): string {
-		const startLabel = new Date(start).toLocaleDateString('en-GB', {
-			weekday: 'short',
-			day: 'numeric',
-			month: 'short'
-		});
-		const endLabel = new Date(end).toLocaleDateString('en-GB', {
-			weekday: 'short',
-			day: 'numeric',
-			month: 'short'
-		});
-		return `${startLabel} – ${endLabel}`;
-	}
 </script>
 
 <svelte:head>
@@ -87,19 +72,11 @@
 </svelte:head>
 
 <main class="mx-auto max-w-7xl px-3 py-6 sm:px-4 md:px-6">
-	<header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-		<div class="min-w-0">
-			<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Where you are</h1>
-			<p class="mt-1 text-sm text-zinc-500">
-				Map, Japan time, and weather for the current stay on the itinerary.
-			</p>
-		</div>
-		<a
-			href={resolve('/calendar')}
-			class="inline-flex shrink-0 items-center justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-		>
-			Open calendar
-		</a>
+	<header class="mb-6">
+		<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Current location</h1>
+		<p class="mt-1 text-sm text-zinc-500">
+			Map, Japan time, and weather for the current stay on the itinerary.
+		</p>
 	</header>
 
 	{#if statusMessage}
@@ -117,8 +94,7 @@
 				<LocationMap
 					latitude={location.latitude}
 					longitude={location.longitude}
-					label={location.accommodationName}
-					zoom={13}
+					zoom={8}
 				/>
 			{:else}
 				<div
@@ -138,12 +114,8 @@
 					{japanTime}
 				</p>
 				<p class="mt-1 text-sm text-zinc-500">{japanDate}</p>
-				{#if location}
-					<p class="mt-4 text-sm font-medium text-zinc-800">{location.accommodationName}</p>
-					{#if location.city}
-						<p class="mt-0.5 text-sm text-zinc-600">{location.city}</p>
-					{/if}
-					<p class="mt-1 text-xs text-zinc-400">{formatStayRange(location.start, location.end)}</p>
+				{#if location?.city}
+					<p class="mt-4 text-sm text-zinc-600">{location.city}</p>
 				{/if}
 			</div>
 
@@ -179,14 +151,6 @@
 					<p class="mt-3 text-sm text-zinc-500">Weather unavailable.</p>
 				{/if}
 			</div>
-
-			<button
-				type="button"
-				class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-				onclick={() => void loadLocation()}
-			>
-				Refresh
-			</button>
 		</section>
 	</div>
 </main>
