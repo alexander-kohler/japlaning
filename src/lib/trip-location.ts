@@ -51,6 +51,22 @@ export function getCurrentAccommodation(at: Date = new Date()): TravelItem | nul
 	return stays[stays.length - 1];
 }
 
+/**
+ * Accommodations and travel covering the Japan calendar day for `at`.
+ * Inclusive of checkout / arrival days.
+ */
+export function getTravelItemsForDay(at: Date = new Date()): TravelItem[] {
+	const day = japanDayKey(at);
+
+	return travelItems.items
+		.filter((item) => {
+			const start = japanDayKey(item.start);
+			const end = japanDayKey(item.end);
+			return day >= start && day <= end;
+		})
+		.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+}
+
 /** Search queries to geocode an accommodation to a point on the map. */
 export function accommodationGeocodeQueries(item: TravelItem): string[] {
 	const city = cityFromItem(item);

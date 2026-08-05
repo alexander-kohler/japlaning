@@ -1,13 +1,18 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import LocationMap from '$lib/components/LocationMap.svelte';
 	import WeatherIcon from '$lib/components/WeatherIcon.svelte';
+	import { splitNameAndLocation, type TravelItem } from '$lib/data';
+	import { getTravelItemsForDay } from '$lib/trip-location';
 	import {
 		fetchWeather,
 		resolveCurrentAccommodationLocation,
 		type LocationInfo,
 		type WeatherCurrent
 	} from '$lib/weather';
+
+	let { data } = $props();
 
 	const JAPAN_TZ = 'Asia/Tokyo';
 
@@ -65,6 +70,63 @@
 		})
 	);
 
+	const todayItems = $derived(data.authenticated ? getTravelItemsForDay(now) : []);
+
+	function kindLabel(kind: TravelItem['kind']): string {
+		if (kind === 'accommodation') return 'Stay';
+		if (kind === 'ferry') return 'Ferry';
+		return 'Flight';
+	}
+
+	function formatItemWhen(item: TravelItem): string {
+		const start = new Date(item.start);
+		const end = new Date(item.end);
+
+		if (item.kind === 'accommodation') {
+			const startLabel = start.toLocaleDateString('en-GB', {
+				day: 'numeric',
+				month: 'short'
+			});
+			const endLabel = end.toLocaleDateString('en-GB', {
+				day: 'numeric',
+				month: 'short'
+			});
+			return `${startLabel} – ${endLabel}`;
+		}
+
+		const startTime = start.toLocaleTimeString('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+		const endTime = end.toLocaleTimeString('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+		const sameDay = item.start.slice(0, 10) === item.end.slice(0, 10);
+		if (sameDay) return `${startTime} – ${endTime}`;
+
+		const endDay = end.toLocaleDateString('en-GB', {
+			day: 'numeric',
+			month: 'short'
+		});
+		return `${startTime} – ${endDay} ${endTime}`;
+	}
+
+	function itemTitle(item: TravelItem): string {
+		return splitNameAndLocation(item.name).displayName;
+	}
+
+	function itemSubtitle(item: TravelItem): string {
+		const { location: place } = splitNameAndLocation(item.name);
+		return place;
+	}
+
+	function todaysActivities(item: TravelItem) {
+		const day = now.toLocaleDateString('en-CA', { timeZone: JAPAN_TZ });
+		return (item.activities ?? []).filter(
+			(activity) => activity.start != null && activity.start.slice(0, 10) === day
+		);
+	}
 </script>
 
 <svelte:head>
@@ -153,4 +215,76 @@
 			</div>
 		</section>
 	</div>
+
+	{#if data.authenticated}
+		<section class="mt-6" aria-label="Today on the itinerary">
+			<div class="mb-3 flex items-baseline justify-between gap-3">
+				<h2 class="text-lg font-semibold tracking-tight text-zinc-900">Today</h2>
+				<a
+					href={resolve('/calendar')}
+					class="text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+				>
+					Full calendar
+				</a>
+			</div>
+
+			{#if todayItems.length === 0}
+				<p class="rounded-xl border border-zinc-200 bg-white px-4 py-5 text-sm text-zinc-500">
+					Nothing scheduled for today in Japan time.
+				</p>
+			{:else}
+				<ul class="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+					{#each todayItems as item (item.id)}
+						{@const place = itemSubtitle(item)}
+						{@const activities = todaysActivities(item)}
+						<li class="px-4 py-4 sm:px-5">
+							<div class="flex flex-wrap items-start justify-between gap-2">
+								<div class="min-w-0">
+									<p class="text-xs font-medium uppercase tracking-wide text-zinc-400">
+										{kindLabel(item.kind)}
+									</p>
+									{#if item.kind === 'accommodation'}
+										<a
+											href={resolve('/accommodation/[id]', { id: item.id })}
+											class="mt-0.5 block text-base font-medium text-zinc-900 hover:underline"
+										>
+											{itemTitle(item)}
+										</a>
+									{:else}
+										<p class="mt-0.5 text-base font-medium text-zinc-900">{itemTitle(item)}</p>
+									{/if}
+									{#if place}
+										<p class="mt-0.5 text-sm text-zinc-500">{place}</p>
+									{/if}
+								</div>
+								<p class="shrink-0 text-sm tabular-nums text-zinc-500">{formatItemWhen(item)}</p>
+							</div>
+
+							{#if activities.length > 0}
+								<ul class="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
+									{#each activities as activity (activity.id)}
+										<li class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+											<span class="text-zinc-700">{activity.name}</span>
+											{#if activity.start}
+												<span class="tabular-nums text-zinc-400">
+													{new Date(activity.start).toLocaleTimeString('en-GB', {
+														hour: '2-digit',
+														minute: '2-digit'
+													})}{#if activity.end}
+														–{new Date(activity.end).toLocaleTimeString('en-GB', {
+															hour: '2-digit',
+															minute: '2-digit'
+														})}{/if}
+												</span>
+											{/if}
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+	{/if}
 </main>
