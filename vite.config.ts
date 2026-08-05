@@ -18,5 +18,12 @@ export default defineConfig({
 			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 			adapter: adapter()
 		})
-	]
+	],
+	// MapLibre ships its own worker; Vite's dep optimizer breaks tile loading without this.
+	optimizeDeps: {
+		exclude: ['maplibre-gl']
+	},
+	ssr: {
+		noExternal: ['maplibre-gl']
+	}
 });
