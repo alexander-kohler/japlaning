@@ -1,680 +1,202 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import LocationMap from '$lib/components/LocationMap.svelte';
 	import {
-		splitNameAndLocation,
-		travelItems,
-		type Activity,
-		type CarRental,
-		type TravelItem
-	} from '$lib/data';
+		FALLBACK_LOCATION,
+		fetchWeather,
+		reverseGeocode,
+		type LocationInfo,
+		type WeatherCurrent
+	} from '$lib/weather';
 
-	type CardItem = {
-		id: string;
-		name: string;
-		displayName: string;
-		location: string;
-		start: string;
-		end: string;
-		startMs: number;
-		endMs: number;
-		kind: string;
-		address?: string;
-		bookingUrl?: string;
-		activities: Activity[];
-		index: number;
-		dateLabel: string | null;
-		dateDayKey: number | null;
-	};
+	let location = $state<LocationInfo | null>(null);
+	let weather = $state<WeatherCurrent | null>(null);
+	let status = $state<'loading' | 'ready' | 'error'>('loading');
+	let statusMessage = $state('Finding your location…');
+	let usedFallback = $state(false);
+	let now = $state(new Date());
 
-	type DateRow = {
-		type: 'date';
-		id: string;
-		label: string;
-		dayKey: number;
-		beforeIndex: number;
-	};
+	let clockId: ReturnType<typeof setInterval> | undefined;
 
-	type CardRow = {
-		type: 'card';
-		item: CardItem;
-	};
+	onMount(() => {
+		clockId = setInterval(() => {
+			now = new Date();
+		}, 1000);
 
-	type Row = DateRow | CardRow;
-
-	type CarSpan = {
-		id: string;
-		name: string;
-		start: string;
-		end: string;
-		firstIndex: number;
-		lastIndex: number;
-	};
-
-	const CARD_GAP = 12;
-	/** Visual gap above/below standalone date separator rows. */
-	const DATE_GAP = -4;
-	const DATE_PULL = CARD_GAP - DATE_GAP;
-	const DAY_MS = 1000 * 60 * 60 * 24;
-
-	let tableSection: HTMLElement;
-	let isExporting = $state(false);
-	let exportError = $state('');
-
-	const items = [...travelItems.items].sort(
-		(a: TravelItem, b: TravelItem) => new Date(a.start).getTime() - new Date(b.start).getTime()
-	);
-	const cars: CarRental[] = travelItems.cars;
-
-	const cardItems: CardItem[] = items.map((item, index) => {
-		const startMs = new Date(item.start).getTime();
-		const endMs = new Date(item.end).getTime();
-		const { displayName, location } = splitNameAndLocation(item.name);
-		return {
-			id: item.id,
-			name: item.name,
-			displayName,
-			location,
-			start: item.start,
-			end: item.end,
-			startMs,
-			endMs,
-			kind: item.kind,
-			address: item.address,
-			bookingUrl: item.bookingUrl,
-			activities: item.activities ?? [],
-			index,
-			dateLabel: null,
-			dateDayKey: null
-		};
+		void loadLocation();
 	});
 
-	const tripStartMs = toStartOfDay(Math.min(...cardItems.map((item) => item.startMs)));
-	const tripEndMs = toStartOfDay(Math.max(...cardItems.map((item) => item.endMs)));
-	const tripDayCount = Math.round((tripEndMs - tripStartMs) / DAY_MS) + 1;
+	onDestroy(() => {
+		if (clockId) clearInterval(clockId);
+	});
 
-	function initialSimDayIndex(): number {
-		const realToday = toStartOfDay(Date.now());
-		if (realToday >= tripStartMs && realToday <= tripEndMs) {
-			return Math.round((realToday - tripStartMs) / DAY_MS);
-		}
-		return 0;
-	}
-
-	let simDayIndex = $state(initialSimDayIndex());
-	const todayMs = $derived(tripStartMs + simDayIndex * DAY_MS);
-
-	const rows: Row[] = buildRows(cardItems);
-
-	const carSpans: CarSpan[] = cars
-		.map((car) => {
-			const startMs = new Date(car.start).getTime();
-			const endMs = new Date(car.end).getTime();
-			let firstIndex = -1;
-			let lastIndex = -1;
-
-			for (const item of cardItems) {
-				if (item.startMs < endMs && item.endMs > startMs) {
-					if (firstIndex === -1) firstIndex = item.index;
-					lastIndex = item.index;
-				}
-			}
-
-			if (firstIndex === -1) return null;
-			return {
-				id: car.id,
-				name: car.name,
-				start: car.start,
-				end: car.end,
-				firstIndex,
-				lastIndex
-			};
-		})
-		.filter((span): span is CarSpan => span !== null);
-
-	function isTransit(kind: string): boolean {
-		return kind !== 'accommodation';
-	}
-
-	function isOvernight(item: CardItem): boolean {
-		return toStartOfDay(item.startMs) !== toStartOfDay(item.endMs);
-	}
-
-	/** Same-day flights/trains keep the on-card date; overnight transit is treated like a stay. */
-	function isSameDayTransit(item: CardItem): boolean {
-		return isTransit(item.kind) && !isOvernight(item);
-	}
-
-	function isStayLike(item: CardItem): boolean {
-		return item.kind === 'accommodation' || isOvernight(item);
-	}
-
-	function formatDateLabel(ms: number): string {
-		return new Date(ms).toLocaleDateString('en-GB', {
-			weekday: 'short',
-			day: '2-digit',
-			month: 'short'
-		});
-	}
-
-	function formatDateParts(ms: number): { weekday: string; dayMonth: string } {
-		const date = new Date(ms);
-		return {
-			weekday: date.toLocaleDateString('en-GB', { weekday: 'short' }),
-			dayMonth: date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-		};
-	}
-
-	function buildRows(cards: CardItem[]): Row[] {
-		const output: Row[] = [];
-
-		if (cards.length) {
-			const dayKey = toStartOfDay(cards[0].startMs);
-			output.push({
-				type: 'date',
-				id: `date-start-${cards[0].id}`,
-				label: formatDateLabel(dayKey),
-				dayKey,
-				beforeIndex: 0
-			});
-		}
-
-		for (let index = 0; index < cards.length; index += 1) {
-			const item = cards[index];
-			const previous = cards[index - 1];
-
-			if (isSameDayTransit(item)) {
-				const dayKey = toStartOfDay(item.startMs);
-				item.dateLabel = formatDateLabel(dayKey);
-				item.dateDayKey = dayKey;
-				output.push({ type: 'card', item });
-				continue;
-			}
-
-			// Stay-like after stay-like (incl. overnight ferry): date sits between them.
-			if (previous && isStayLike(previous) && isStayLike(item)) {
-				const changeDay = toStartOfDay(item.startMs);
-				output.push({
-					type: 'date',
-					id: `date-${changeDay}-${item.id}`,
-					label: formatDateLabel(changeDay),
-					dayKey: changeDay,
-					beforeIndex: item.index
-				});
-			}
-
-			output.push({ type: 'card', item });
-		}
-
-		if (cards.length) {
-			const last = cards[cards.length - 1];
-			const dayKey = toStartOfDay(last.endMs);
-			output.push({
-				type: 'date',
-				id: `date-end-${last.id}`,
-				label: formatDateLabel(dayKey),
-				dayKey,
-				beforeIndex: cards.length
-			});
-		}
-
-		return output;
-	}
-
-	function isCurrentDay(dayKey: number): boolean {
-		return dayKey === todayMs;
-	}
-
-	function cardCoversToday(item: CardItem): boolean {
-		return toStartOfDay(item.startMs) <= todayMs && toStartOfDay(item.endMs) >= todayMs;
-	}
-
-	const todayAlreadyLabeled = $derived(
-		rows.some(
-			(row) =>
-				(row.type === 'date' && row.dayKey === todayMs) ||
-				(row.type === 'card' && row.item.dateDayKey === todayMs)
-		)
-	);
-
-	const todayCardId = $derived(
-		todayAlreadyLabeled ? undefined : cardItems.find((item) => cardCoversToday(item))?.id
-	);
-
-	function formatCompactDateTime(value: string): string {
-		return new Date(value).toLocaleString('en-GB', {
-			day: '2-digit',
-			month: 'short',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
-	}
-
-	function formatTime(value: Date): string {
-		return value.toLocaleTimeString('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit'
-		});
-	}
-
-	function formatBookingDateRange(start: string, end: string, kind?: string): string {
-		const startDate = new Date(start);
-		const endDate = new Date(end);
-
-		if (kind === 'accommodation') {
-			const startLabel = startDate.toLocaleDateString('en-GB', {
-				day: 'numeric',
-				month: 'short'
-			});
-			const endLabel = endDate.toLocaleDateString('en-GB', {
-				day: 'numeric',
-				month: 'short'
-			});
-			return `${startLabel} – ${endLabel}`;
-		}
-
-		const sameDay = toStartOfDay(startDate.getTime()) === toStartOfDay(endDate.getTime());
-		if (sameDay) {
-			return `${formatTime(startDate)} → ${formatTime(endDate)}`;
-		}
-
-		return `${formatCompactDateTime(start)} → ${formatCompactDateTime(end)}`;
-	}
-
-	function toStartOfDay(ms: number): number {
-		const date = new Date(ms);
-		date.setHours(0, 0, 0, 0);
-		return date.getTime();
-	}
-
-	async function downloadTableJpg(): Promise<void> {
-		if (!tableSection || isExporting) return;
-
-		isExporting = true;
-		exportError = '';
+	async function loadLocation(): Promise<void> {
+		status = 'loading';
+		statusMessage = 'Finding your location…';
 
 		try {
-			await document.fonts.ready;
-			const { toJpeg } = await import('html-to-image');
-			const width = tableSection.scrollWidth;
-			const height = tableSection.scrollHeight;
-			const dataUrl = await toJpeg(tableSection, {
-				backgroundColor: '#ffffff',
-				cacheBust: true,
-				height,
-				pixelRatio: 2,
-				quality: 0.95,
-				style: {
-					height: `${height}px`,
-					width: `${width}px`
-				},
-				width
-			});
+			const coords = await getBrowserPosition();
+			const label = await reverseGeocode(coords.latitude, coords.longitude);
+			location = {
+				latitude: coords.latitude,
+				longitude: coords.longitude,
+				label,
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+			};
+			usedFallback = false;
+		} catch {
+			location = { ...FALLBACK_LOCATION };
+			usedFallback = true;
+			statusMessage = 'Location permission unavailable — showing Shinjuku.';
+		}
 
-			const link = document.createElement('a');
-			link.download = 'japan-vertical-calendar.jpg';
-			link.href = dataUrl;
-			link.click();
-		} catch (error) {
-			console.error(error);
-			exportError = 'Could not export the table. Please try again.';
-		} finally {
-			isExporting = false;
+		try {
+			weather = await fetchWeather(location.latitude, location.longitude);
+			status = 'ready';
+			if (!usedFallback) statusMessage = '';
+		} catch {
+			status = 'error';
+			statusMessage = 'Could not load weather for this location.';
 		}
 	}
 
-	function formatTimeRange(start: string, end: string): string {
-		return `${formatCompactDateTime(start)} -> ${formatCompactDateTime(end)}`;
+	function getBrowserPosition(): Promise<GeolocationCoordinates> {
+		return new Promise((resolvePos, reject) => {
+			if (!navigator.geolocation) {
+				reject(new Error('Geolocation not supported'));
+				return;
+			}
+
+			navigator.geolocation.getCurrentPosition(
+				(pos) => resolvePos(pos.coords),
+				(err) => reject(err),
+				{ enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 }
+			);
+		});
 	}
 
-	function googleMapsUrl(query: string): string {
-		return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-	}
+	const localTime = $derived(
+		now.toLocaleTimeString('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			timeZone: location?.timezone
+		})
+	);
 
-	function bookingLabel(url: string): string {
-		const lower = url.toLowerCase();
-		if (lower.includes('airbnb.')) return 'Airbnb';
-		if (lower.includes('booking.com')) return 'Booking.com';
-		return 'Booking';
-	}
-
-	function kindLabel(kind?: string): string {
-		if (kind === 'accommodation') return 'Stay';
-		if (kind === 'ferry') return 'Ferry';
-		if (kind === 'plane') return 'Flight';
-		return 'Transit';
-	}
-
-	function thumbClasses(kind?: string): string {
-		if (kind === 'accommodation') return 'text-sky-700';
-		if (kind === 'plane') return 'text-violet-700';
-		if (kind === 'ferry') return 'text-cyan-700';
-		return 'text-amber-800';
-	}
-
-	function thumbEmoji(kind?: string): string {
-		if (kind === 'accommodation') return '🏨';
-		if (kind === 'ferry') return '⛴️';
-		if (kind === 'plane') return '✈️';
-		return '🚆';
-	}
-
-	function carRailForCard(index: number): Array<{
-		span: CarSpan;
-		isFirst: boolean;
-		isLast: boolean;
-	}> {
-		return carSpans
-			.filter((span) => index >= span.firstIndex && index <= span.lastIndex)
-			.map((span) => ({
-				span,
-				isFirst: index === span.firstIndex,
-				isLast: index === span.lastIndex
-			}));
-	}
-
-	function carRailForDateBefore(beforeIndex: number): CarSpan[] {
-		return carSpans.filter(
-			(span) => beforeIndex > span.firstIndex && beforeIndex <= span.lastIndex
-		);
-	}
+	const localDate = $derived(
+		now.toLocaleDateString('en-GB', {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric',
+			timeZone: location?.timezone
+		})
+	);
 </script>
 
-<main class="mx-auto max-w-7xl px-3 py-4 sm:px-4 md:px-6">
-	<header class="mb-4 flex items-start justify-between gap-3">
+<svelte:head>
+	<title>Japlaning — Home</title>
+</svelte:head>
+
+<main class="mx-auto max-w-7xl px-3 py-6 sm:px-4 md:px-6">
+	<header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 		<div class="min-w-0">
-			<h1 class="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl md:text-3xl">
-				Japan Vertical Calendar
-			</h1>
-			<p class="mt-1 hidden text-sm text-zinc-500 sm:block">
-				Date | Accommodation / Transit | Car rental
+			<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Where you are</h1>
+			<p class="mt-1 text-sm text-zinc-500">
+				Live map, local time, and weather for your current location.
 			</p>
-			{#if exportError}
-				<p class="mt-1 text-sm text-red-600">{exportError}</p>
-			{/if}
 		</div>
-		<button
-			type="button"
-			class="shrink-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
-			disabled={isExporting}
-			onclick={downloadTableJpg}
+		<a
+			href={resolve('/calendar')}
+			class="inline-flex shrink-0 items-center justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800"
 		>
-			{isExporting ? 'Exporting…' : 'Export'}
-		</button>
+			Open calendar
+		</a>
 	</header>
 
-	<label
-		class="mb-4 flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:py-2.5"
-	>
-		<div class="flex items-center justify-between gap-3 sm:contents">
-			<span class="shrink-0 text-sm font-medium text-zinc-700">Simulate day</span>
-			<span
-				class="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-sky-600 tabular-nums sm:order-last"
-			>
-				<span class="h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-500/20" aria-hidden="true"
-				></span>
-				{formatDateLabel(todayMs)}
-			</span>
-		</div>
-		<input
-			class="min-w-0 w-full flex-1 touch-manipulation accent-sky-600 sm:w-auto"
-			type="range"
-			min="0"
-			max={tripDayCount - 1}
-			step="1"
-			value={simDayIndex}
-			oninput={(event) => {
-				simDayIndex = Number(event.currentTarget.value);
-			}}
-			aria-valuetext={formatDateLabel(todayMs)}
-		/>
-	</label>
-
-	<section
-		bind:this={tableSection}
-		class="relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100/80 py-2 pl-2 pr-1 shadow-sm sm:px-2.5 sm:pb-2.5"
-		style={`padding-top: ${DATE_PULL + 8}px;`}
-		aria-label="Vertical travel timeline"
-	>
-		<div
-			class="grid min-w-0 grid-cols-[52px_minmax(0,1fr)_14px] gap-x-1 sm:grid-cols-[130px_minmax(0,1fr)_36px] sm:gap-x-3"
-			style={`row-gap: ${CARD_GAP}px;`}
+	{#if statusMessage}
+		<p
+			class={`mb-4 text-sm ${status === 'error' ? 'text-red-600' : 'text-zinc-500'}`}
+			role="status"
 		>
-			{#each rows as row (row.type === 'date' ? row.id : row.item.id)}
-				{#if row.type === 'date'}
-					{@const dateRails = carRailForDateBefore(row.beforeIndex)}
-					{@const current = isCurrentDay(row.dayKey)}
-					{@const parts = formatDateParts(row.dayKey)}
-					<div class="flex items-center justify-end gap-1" style={`margin-block: -${DATE_PULL}px;`}>
-						{#if current}
-							<span
-								class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
-								title="Today"
-								aria-hidden="true"
-							></span>
+			{statusMessage}
+		</p>
+	{/if}
+
+	<div class="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+		<section class="min-h-[320px] sm:min-h-[420px]" aria-label="Location map">
+			{#if location}
+				<LocationMap
+					latitude={location.latitude}
+					longitude={location.longitude}
+					label={location.label}
+				/>
+			{:else}
+				<div
+					class="flex h-full min-h-[280px] items-center justify-center rounded-lg border border-zinc-200 bg-zinc-100 text-sm text-zinc-500"
+				>
+					Loading map…
+				</div>
+			{/if}
+		</section>
+
+		<section class="flex flex-col gap-4" aria-label="Time and weather">
+			<div class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
+				<p class="text-xs font-medium uppercase tracking-wide text-zinc-400">Local time</p>
+				<p
+					class="mt-2 font-semibold tabular-nums tracking-tight text-zinc-900 text-4xl sm:text-5xl"
+				>
+					{localTime}
+				</p>
+				<p class="mt-1 text-sm text-zinc-500">{localDate}</p>
+				{#if location}
+					<p class="mt-3 text-sm text-zinc-600">{location.label}</p>
+					<p class="mt-0.5 text-xs text-zinc-400">
+						{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+						{#if location.timezone}
+							· {location.timezone}
 						{/if}
-						<div
-							class={`text-right leading-tight ${
-								current ? 'font-semibold text-sky-600' : 'font-medium text-zinc-500'
-							}`}
-						>
-							<p class="hidden text-sm sm:block">{row.label}</p>
-							<p class="sm:hidden">
-								<span class="block text-[10px] uppercase tracking-wide opacity-80"
-									>{parts.weekday}</span
-								>
-								<span class="block text-[11px] tabular-nums">{parts.dayMonth}</span>
-							</p>
-						</div>
-					</div>
-					<div
-						class="flex items-center"
-						style={`margin-block: -${DATE_PULL}px;`}
-						aria-hidden="true"
-					>
-						<div class={`h-px w-full ${current ? 'bg-sky-300' : 'bg-zinc-200/80'}`}></div>
-					</div>
-					<div
-						class="relative flex justify-center"
-						style={`margin-bottom: -${CARD_GAP + DATE_PULL}px; padding-bottom: ${CARD_GAP + DATE_PULL}px; margin-top: -${CARD_GAP + DATE_PULL}px; padding-top: ${CARD_GAP + DATE_PULL}px;`}
-					>
-						{#each dateRails as span (span.id)}
-							<div
-								class="absolute inset-y-0 flex w-3.5 flex-col items-center sm:w-5"
-								aria-hidden="true"
-							>
-								<span class="w-0.5 flex-1 rounded-full bg-amber-500"></span>
-							</div>
-						{/each}
-					</div>
-				{:else}
-					{@const segment = row.item}
-					{@const rails = carRailForCard(segment.index)}
-					{@const isLastCard = segment.index === cardItems.length - 1}
-
-					<div class="relative flex items-center justify-end gap-1">
-						{#if segment.dateLabel && segment.dateDayKey !== null}
-							{@const current = isCurrentDay(segment.dateDayKey)}
-							{@const parts = formatDateParts(segment.dateDayKey)}
-							{#if current}
-								<span
-									class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
-									title="Today"
-									aria-hidden="true"
-								></span>
-							{/if}
-							<div
-								class={`text-right leading-tight ${
-									current ? 'font-semibold text-sky-600' : 'font-medium text-zinc-500'
-								}`}
-							>
-								<p class="hidden text-sm sm:block">{segment.dateLabel}</p>
-								<p class="sm:hidden">
-									<span class="block text-[10px] uppercase tracking-wide opacity-80"
-										>{parts.weekday}</span
-									>
-									<span class="block text-[11px] tabular-nums">{parts.dayMonth}</span>
-								</p>
-							</div>
-						{:else if todayCardId === segment.id}
-							{@const parts = formatDateParts(todayMs)}
-							<span
-								class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
-								title="Today"
-								aria-hidden="true"
-							></span>
-							<div class="text-right font-semibold leading-tight text-sky-600">
-								<p class="hidden text-sm sm:block">{formatDateLabel(todayMs)}</p>
-								<p class="sm:hidden">
-									<span class="block text-[10px] uppercase tracking-wide opacity-80"
-										>{parts.weekday}</span
-									>
-									<span class="block text-[11px] tabular-nums">{parts.dayMonth}</span>
-								</p>
-							</div>
-						{/if}
-					</div>
-
-					<article
-						class={`rounded-xl border border-zinc-200 bg-white shadow-sm ${
-							segment.kind === 'accommodation'
-								? 'transition hover:border-zinc-300 hover:shadow'
-								: ''
-						}`}
-						title={`${segment.name} (${formatTimeRange(segment.start, segment.end)})`}
-					>
-						<div class="flex items-start gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
-							{#if segment.kind === 'accommodation'}
-								<a
-									href={resolve('/accommodation/[id]', { id: segment.id })}
-									class="flex min-w-0 flex-1 items-start gap-2 sm:gap-3"
-									aria-label={`Open ${segment.displayName} details`}
-								>
-									<div
-										class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg sm:h-14 sm:w-14 sm:text-2xl ${thumbClasses(segment.kind)}`}
-										aria-hidden="true"
-									>
-										{thumbEmoji(segment.kind)}
-									</div>
-									<div class="min-w-0 flex-1">
-										<h3 class="text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base">
-											{segment.displayName}
-										</h3>
-										<p class="mt-0.5 text-[11px] leading-snug text-zinc-500 sm:text-xs">
-											{formatBookingDateRange(segment.start, segment.end, segment.kind)}
-										</p>
-										{#if segment.location || segment.kind}
-											<p class="mt-0.5 text-[11px] leading-snug text-zinc-400 sm:text-xs">
-												{[segment.location, kindLabel(segment.kind)].filter(Boolean).join(' · ')}
-											</p>
-										{/if}
-										{#if segment.activities.length}
-											<p class="mt-1 text-[11px] leading-snug text-sky-600 sm:text-xs">
-												{segment.activities.length}
-												{segment.activities.length === 1 ? 'activity' : 'activities'}
-											</p>
-										{/if}
-									</div>
-									<span class="shrink-0 self-center text-zinc-300" aria-hidden="true">›</span>
-								</a>
-								<a
-									href={googleMapsUrl(segment.address ?? segment.name)}
-									target="_blank"
-									rel="noopener noreferrer external"
-									class="inline-flex shrink-0 items-center gap-1.5 self-end rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 active:bg-zinc-100"
-									aria-label={`Open ${segment.name} in Google Maps`}
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										viewBox="0 0 24 24"
-										fill="currentColor"
-										class="h-4 w-4"
-										aria-hidden="true"
-									>
-										<path
-											d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"
-										/>
-									</svg>
-									<span class="hidden text-xs font-medium sm:inline">Google Maps</span>
-								</a>
-							{:else}
-								<div
-									class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg sm:h-14 sm:w-14 sm:text-2xl ${thumbClasses(segment.kind)}`}
-									aria-hidden="true"
-								>
-									{thumbEmoji(segment.kind)}
-								</div>
-								<div class="min-w-0 flex-1">
-									<h3 class="text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base">
-										{segment.displayName}
-									</h3>
-									<div class="mt-0.5 min-w-0">
-										<p class="text-[11px] leading-snug text-zinc-500 sm:text-xs">
-											{formatBookingDateRange(segment.start, segment.end, segment.kind)}
-										</p>
-										{#if segment.location || segment.kind}
-											<p class="mt-0.5 text-[11px] leading-snug text-zinc-400 sm:text-xs">
-												{[segment.location, kindLabel(segment.kind)].filter(Boolean).join(' · ')}
-											</p>
-										{/if}
-									</div>
-								</div>
-							{/if}
-						</div>
-
-						{#if segment.kind === 'accommodation' && segment.bookingUrl}
-							<ul class="border-t border-zinc-100">
-								<li>
-									<a
-										href={segment.bookingUrl}
-										target="_blank"
-										rel="noopener noreferrer external"
-										class="flex min-h-11 items-center gap-2.5 px-2.5 py-2.5 text-left transition hover:bg-zinc-50 active:bg-zinc-50 sm:min-h-0 sm:px-3"
-										aria-label={`Open ${segment.name} on ${bookingLabel(segment.bookingUrl)}`}
-									>
-										<span
-											class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-sm"
-											aria-hidden="true">🔗</span
-										>
-										<span class="min-w-0 flex-1 text-[12px] text-zinc-700 sm:text-sm"
-											>{bookingLabel(segment.bookingUrl)}</span
-										>
-										<span class="shrink-0 text-zinc-300" aria-hidden="true">›</span>
-									</a>
-								</li>
-							</ul>
-						{/if}
-					</article>
-
-					<div
-						class="relative flex justify-center"
-						style={`margin-bottom: ${isLastCard ? '0' : `-${CARD_GAP}px`}; padding-bottom: ${isLastCard ? '0' : `${CARD_GAP}px`};`}
-					>
-						{#each rails as rail (rail.span.id)}
-							<div
-								class="absolute inset-y-0 flex w-3.5 flex-col items-center sm:w-5"
-								title={`${rail.span.name} (${formatTimeRange(rail.span.start, rail.span.end)})`}
-								aria-label={`${rail.span.name}, ${formatTimeRange(rail.span.start, rail.span.end)}`}
-							>
-								{#if rail.isFirst}
-									<span class="rounded-full bg-white text-xs leading-none shadow-sm sm:text-sm"
-										>🚗</span
-									>
-								{:else}
-									<span class="h-1.5 w-0.5 rounded-full bg-amber-500" aria-hidden="true"></span>
-								{/if}
-								<span class="w-0.5 flex-1 rounded-full bg-amber-500" aria-hidden="true"></span>
-								{#if rail.isLast}
-									<span class="rounded-full bg-white text-xs leading-none shadow-sm sm:text-sm"
-										>🚗</span
-									>
-								{:else}
-									<span class="h-1.5 w-0.5 rounded-full bg-amber-500" aria-hidden="true"></span>
-								{/if}
-							</div>
-						{/each}
-					</div>
+					</p>
 				{/if}
-			{/each}
-		</div>
-	</section>
+			</div>
+
+			<div class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
+				<p class="text-xs font-medium uppercase tracking-wide text-zinc-400">Current weather</p>
+				{#if weather}
+					<p
+						class="mt-2 text-4xl font-semibold tracking-tight text-zinc-900 tabular-nums sm:text-5xl"
+					>
+						{Math.round(weather.temperature)}°C
+					</p>
+					<p class="mt-1 text-sm text-zinc-600">{weather.label}</p>
+					<dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+						<div>
+							<dt class="text-zinc-400">Humidity</dt>
+							<dd class="font-medium tabular-nums text-zinc-800">{weather.humidity}%</dd>
+						</div>
+						<div>
+							<dt class="text-zinc-400">Wind</dt>
+							<dd class="font-medium tabular-nums text-zinc-800">
+								{Math.round(weather.windSpeed)} km/h
+							</dd>
+						</div>
+					</dl>
+				{:else if status === 'loading'}
+					<p class="mt-3 text-sm text-zinc-500">Loading weather…</p>
+				{:else}
+					<p class="mt-3 text-sm text-zinc-500">Weather unavailable.</p>
+				{/if}
+			</div>
+
+			<button
+				type="button"
+				class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+				onclick={() => void loadLocation()}
+			>
+				Refresh location
+			</button>
+		</section>
+	</div>
 </main>

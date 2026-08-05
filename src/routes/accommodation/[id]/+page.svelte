@@ -61,7 +61,7 @@
 
 <main class="mx-auto max-w-3xl px-3 py-4 sm:px-4 md:px-6">
 	<a
-		href={resolve('/')}
+		href={resolve('/calendar')}
 		class="mb-4 inline-flex items-center gap-1.5 text-sm text-zinc-500 transition hover:text-zinc-800"
 	>
 		<span aria-hidden="true">‹</span>
