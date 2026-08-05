@@ -1,9 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import type { Map as LeafletMap, Marker } from 'leaflet';
-	import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-	import markerIcon from 'leaflet/dist/images/marker-icon.png';
-	import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 	let {
 		latitude,
@@ -25,10 +22,17 @@
 
 		if (!mapEl) return;
 
+		// Served from /static/leaflet so Vite does not rewrite relative icon URLs.
+		// Clear Leaflet's default imagePath so it is not prepended to our absolute paths.
+		const DefaultProto = L.Icon.Default.prototype as L.Icon.Default & {
+			_getIconUrl?: string;
+		};
+		delete DefaultProto._getIconUrl;
+		L.Icon.Default.imagePath = '';
 		L.Icon.Default.mergeOptions({
-			iconRetinaUrl: markerIcon2x,
-			iconUrl: markerIcon,
-			shadowUrl: markerShadow
+			iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+			iconUrl: '/leaflet/marker-icon.png',
+			shadowUrl: '/leaflet/marker-shadow.png'
 		});
 
 		map = L.map(mapEl, {
