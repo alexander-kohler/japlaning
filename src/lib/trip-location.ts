@@ -1,9 +1,15 @@
 import { splitNameAndLocation, travelItems, type TravelItem } from '$lib/data';
 
-function toStartOfDay(ms: number): number {
-	const date = new Date(ms);
-	date.setHours(0, 0, 0, 0);
-	return date.getTime();
+const JAPAN_TZ = 'Asia/Tokyo';
+
+/** Calendar day key (YYYY-MM-DD) in Japan for a Date, or for a naive itinerary timestamp. */
+function japanDayKey(value: Date | string): string {
+	if (typeof value === 'string') {
+		// Itinerary values are Japan-local without an offset (e.g. 2026-08-12T16:00).
+		return value.slice(0, 10);
+	}
+
+	return value.toLocaleDateString('en-CA', { timeZone: JAPAN_TZ });
 }
 
 function accommodations(): TravelItem[] {
@@ -22,23 +28,23 @@ export function displayNameFromItem(item: TravelItem): string {
 
 /**
  * Current accommodation for a given instant.
- * Active stay that day; before the trip → first; after → last.
+ * Active stay that Japan calendar day; before the trip → first; after → last.
  */
 export function getCurrentAccommodation(at: Date = new Date()): TravelItem | null {
 	const stays = accommodations();
 	if (!stays.length) return null;
 
-	const day = toStartOfDay(at.getTime());
+	const day = japanDayKey(at);
 
 	const active = stays.find((item) => {
-		const start = toStartOfDay(new Date(item.start).getTime());
-		const end = toStartOfDay(new Date(item.end).getTime());
+		const start = japanDayKey(item.start);
+		const end = japanDayKey(item.end);
 		return day >= start && day <= end;
 	});
 
 	if (active) return active;
 
-	if (day < toStartOfDay(new Date(stays[0].start).getTime())) {
+	if (day < japanDayKey(stays[0].start)) {
 		return stays[0];
 	}
 

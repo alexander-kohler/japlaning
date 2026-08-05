@@ -66,18 +66,17 @@
 		})
 	);
 
+	/** Itinerary timestamps are Japan-local naive strings — format without TZ conversion. */
 	function formatStayRange(start: string, end: string): string {
 		const startLabel = new Date(start).toLocaleDateString('en-GB', {
 			weekday: 'short',
 			day: 'numeric',
-			month: 'short',
-			timeZone: JAPAN_TZ
+			month: 'short'
 		});
 		const endLabel = new Date(end).toLocaleDateString('en-GB', {
 			weekday: 'short',
 			day: 'numeric',
-			month: 'short',
-			timeZone: JAPAN_TZ
+			month: 'short'
 		});
 		return `${startLabel} – ${endLabel}`;
 	}
