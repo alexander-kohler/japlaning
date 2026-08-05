@@ -7,11 +7,13 @@
 	let { children, data } = $props();
 
 	const links = [
-		{ href: '/' as const, label: 'Calendar' },
-		{ href: '/split' as const, label: 'Cost split' }
+		{ href: '/' as const, label: 'Home', public: true },
+		{ href: '/calendar' as const, label: 'Calendar', public: false },
+		{ href: '/split' as const, label: 'Cost split', public: false }
 	];
 
 	const isLogin = $derived(page.url.pathname === '/login');
+	const visibleLinks = $derived(links.filter((link) => link.public || data.authenticated));
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -20,11 +22,16 @@
 	{#if !isLogin}
 		<nav class="border-b border-zinc-200 bg-white">
 			<div class="mx-auto flex max-w-7xl items-center gap-1 px-3 py-2 sm:px-4">
-				<span class="mr-3 text-sm font-semibold tracking-tight text-zinc-900">Japlaning</span>
-				{#each links as link (link.href)}
+				<a
+					href={resolve('/')}
+					class="mr-3 text-sm font-semibold tracking-tight text-zinc-900 hover:text-zinc-700"
+				>
+					Japlaning
+				</a>
+				{#each visibleLinks as link (link.href)}
 					{@const active =
 						page.url.pathname === link.href ||
-						(link.href === '/' && page.url.pathname.startsWith('/accommodation'))}
+						(link.href === '/calendar' && page.url.pathname.startsWith('/accommodation'))}
 					<a
 						href={resolve(link.href)}
 						class={`rounded-md px-2.5 py-1.5 text-sm transition ${
@@ -45,6 +52,13 @@
 							Log out
 						</button>
 					</form>
+				{:else}
+					<a
+						href={resolve('/login')}
+						class="ml-auto rounded-md px-2.5 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+					>
+						Log in
+					</a>
 				{/if}
 			</div>
 		</nav>

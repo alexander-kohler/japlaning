@@ -16,6 +16,6 @@ export const actions: Actions = {
 		}
 
 		setAuthCookies(cookies, password);
-		throw redirect(303, '/');
+		throw redirect(303, '/calendar');
 	}
 };

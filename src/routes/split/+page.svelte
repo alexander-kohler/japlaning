@@ -69,7 +69,9 @@
 		}).format(date);
 	}
 
-	function groupExpensesByDate(list: Expense[]): { key: string; label: string; expenses: Expense[] }[] {
+	function groupExpensesByDate(
+		list: Expense[]
+	): { key: string; label: string; expenses: Expense[] }[] {
 		const groups = new Map<string, { key: string; label: string; expenses: Expense[] }>();
 
 		for (const expense of list) {
@@ -176,7 +178,11 @@
 	async function removePerson(id: string): Promise<void> {
 		const person = people.find((p) => p.id === id);
 		const name = person?.name ?? 'this person';
-		if (!confirm(`Remove ${name} from the cost split? Their expenses will stay, but they will no longer be included.`)) {
+		if (
+			!confirm(
+				`Remove ${name} from the cost split? Their expenses will stay, but they will no longer be included.`
+			)
+		) {
 			return;
 		}
 
@@ -604,18 +610,21 @@
 
 			<section aria-labelledby="balances-heading">
 				<div class="mb-2">
-					<h2 id="balances-heading" class="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+					<h2
+						id="balances-heading"
+						class="text-sm font-semibold uppercase tracking-wide text-zinc-500"
+					>
 						Balances
 					</h2>
-					<p class="mt-1 text-xs text-zinc-400">
-						Positive = owed money · Negative = owes money
-					</p>
+					<p class="mt-1 text-xs text-zinc-400">Positive = owed money · Negative = owes money</p>
 				</div>
 
 				{#if people.length === 0}
 					<p class="text-sm text-zinc-500">Add people to see balances.</p>
 				{:else}
-					<ul class="divide-y divide-zinc-100 overflow-hidden rounded-lg border border-zinc-200 bg-white">
+					<ul
+						class="divide-y divide-zinc-100 overflow-hidden rounded-lg border border-zinc-200 bg-white"
+					>
 						{#each balances as balance (balance.personId)}
 							<li class="flex items-center justify-between px-3 py-2.5 text-sm">
 								<span class="font-medium text-zinc-800">{balance.name}</span>
@@ -802,7 +811,9 @@
 				<p class="mt-4 text-sm text-zinc-500">Add at least two people to start splitting.</p>
 			{/if}
 
-			<div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
+			<div
+				class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4"
+			>
 				{#if people.length || expenses.length}
 					<button
 						type="button"

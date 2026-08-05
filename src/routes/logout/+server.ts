@@ -4,5 +4,5 @@ import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ cookies }) => {
 	clearAuthCookies(cookies);
-	throw redirect(303, '/login');
+	throw redirect(303, '/');
 };
