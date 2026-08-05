@@ -4,7 +4,7 @@
 	import LocationMap from '$lib/components/LocationMap.svelte';
 	import {
 		fetchWeather,
-		resolveCurrentCityLocation,
+		resolveCurrentAccommodationLocation,
 		type LocationInfo,
 		type WeatherCurrent
 	} from '$lib/weather';
@@ -12,7 +12,7 @@
 	let location = $state<LocationInfo | null>(null);
 	let weather = $state<WeatherCurrent | null>(null);
 	let status = $state<'loading' | 'ready' | 'error'>('loading');
-	let statusMessage = $state('Finding current city…');
+	let statusMessage = $state('Finding current accommodation…');
 	let now = $state(new Date());
 
 	let clockId: ReturnType<typeof setInterval> | undefined;
@@ -31,16 +31,16 @@
 
 	async function loadLocation(): Promise<void> {
 		status = 'loading';
-		statusMessage = 'Finding current city…';
+		statusMessage = 'Finding current accommodation…';
 
 		try {
-			location = await resolveCurrentCityLocation(new Date());
+			location = await resolveCurrentAccommodationLocation(new Date());
 			weather = await fetchWeather(location.latitude, location.longitude);
 			status = 'ready';
 			statusMessage = '';
 		} catch {
 			status = 'error';
-			statusMessage = 'Could not load location or weather.';
+			statusMessage = 'Could not load accommodation location or weather.';
 		}
 	}
 
@@ -62,6 +62,20 @@
 			timeZone: location?.timezone
 		})
 	);
+
+	function formatStayRange(start: string, end: string): string {
+		const startLabel = new Date(start).toLocaleDateString('en-GB', {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short'
+		});
+		const endLabel = new Date(end).toLocaleDateString('en-GB', {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short'
+		});
+		return `${startLabel} – ${endLabel}`;
+	}
 </script>
 
 <svelte:head>
@@ -73,7 +87,7 @@
 		<div class="min-w-0">
 			<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Where you are</h1>
 			<p class="mt-1 text-sm text-zinc-500">
-				Map, local time, and weather for the current city on the itinerary.
+				Map, local time, and weather for the current accommodation on the itinerary.
 			</p>
 		</div>
 		<a
@@ -94,13 +108,13 @@
 	{/if}
 
 	<div class="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-		<section class="min-h-[320px] sm:min-h-[420px]" aria-label="Location map">
+		<section class="min-h-[320px] sm:min-h-[420px]" aria-label="Accommodation map">
 			{#if location}
 				<LocationMap
 					latitude={location.latitude}
 					longitude={location.longitude}
-					label={location.label}
-					zoom={12}
+					label={location.accommodationName}
+					zoom={14}
 				/>
 			{:else}
 				<div
@@ -121,12 +135,15 @@
 				</p>
 				<p class="mt-1 text-sm text-zinc-500">{localDate}</p>
 				{#if location}
-					<p class="mt-3 text-sm text-zinc-600">{location.label}</p>
-					<p class="mt-0.5 text-xs text-zinc-400">
-						City center · {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-						{#if location.timezone}
-							· {location.timezone}
-						{/if}
+					<p class="mt-3 text-sm font-medium text-zinc-800">{location.accommodationName}</p>
+					{#if location.address}
+						<p class="mt-0.5 text-sm text-zinc-600">{location.address}</p>
+					{:else if location.city}
+						<p class="mt-0.5 text-sm text-zinc-600">{location.city}</p>
+					{/if}
+					<p class="mt-1 text-xs text-zinc-400">
+						{formatStayRange(location.start, location.end)}
+						· {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
 					</p>
 				{/if}
 			</div>

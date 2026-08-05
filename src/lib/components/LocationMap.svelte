@@ -1,12 +1,23 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import type { Map as LeafletMap, Marker } from 'leaflet';
+	import {
+		Map,
+		Marker,
+		NavigationControl,
+		Popup,
+		type Map as MaplibreMap,
+		type Marker as MaplibreMarker
+	} from 'maplibre-gl';
+	import 'maplibre-gl/dist/maplibre-gl.css';
+
+	/** MapTiler Basic look (OpenMapTiles style) served locally with OpenFreeMap tiles. */
+	const STYLE_URL = '/map-styles/maptiler-basic.json';
 
 	let {
 		latitude,
 		longitude,
-		label = 'Current location',
-		zoom = 12
+		label = 'Current accommodation',
+		zoom = 14
 	}: {
 		latitude: number;
 		longitude: number;
@@ -15,54 +26,46 @@
 	} = $props();
 
 	let mapEl: HTMLDivElement | undefined = $state();
-	let map: LeafletMap | undefined;
-	let marker: Marker | undefined;
+	let map: MaplibreMap | undefined;
+	let marker: MaplibreMarker | undefined;
 
-	onMount(async () => {
-		const L = await import('leaflet');
-		await import('leaflet/dist/leaflet.css');
-
+	onMount(() => {
 		if (!mapEl) return;
 
-		// Served from /static/leaflet so Vite does not rewrite relative icon URLs.
-		// Clear Leaflet's default imagePath so it is not prepended to our absolute paths.
-		const DefaultProto = L.Icon.Default.prototype as L.Icon.Default & {
-			_getIconUrl?: string;
-		};
-		delete DefaultProto._getIconUrl;
-		L.Icon.Default.imagePath = '';
-		L.Icon.Default.mergeOptions({
-			iconRetinaUrl: '/leaflet/marker-icon-2x.png',
-			iconUrl: '/leaflet/marker-icon.png',
-			shadowUrl: '/leaflet/marker-shadow.png'
+		const instance = new Map({
+			container: mapEl,
+			style: STYLE_URL,
+			center: [longitude, latitude],
+			zoom,
+			attributionControl: { compact: true }
 		});
+		map = instance;
 
-		map = L.map(mapEl, {
-			zoomControl: true,
-			attributionControl: true
-		}).setView([latitude, longitude], zoom);
+		instance.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-			maxZoom: 19
-		}).addTo(map);
+		marker = new Marker({ color: '#2563eb' })
+			.setLngLat([longitude, latitude])
+			.setPopup(new Popup({ offset: 16 }).setText(label))
+			.addTo(instance);
 
-		marker = L.marker([latitude, longitude]).addTo(map).bindPopup(label);
-
-		requestAnimationFrame(() => map?.invalidateSize());
+		instance.on('load', () => {
+			instance.resize();
+		});
 	});
 
 	$effect(() => {
 		if (!map || !marker) return;
-		marker.setLatLng([latitude, longitude]);
-		marker.bindPopup(label);
-		map.setView([latitude, longitude], zoom);
+		marker.setLngLat([longitude, latitude]);
+		marker.setPopup(new Popup({ offset: 16 }).setText(label));
+		map.setCenter([longitude, latitude]);
+		map.setZoom(zoom);
 	});
 
 	onDestroy(() => {
+		marker?.remove();
+		marker = undefined;
 		map?.remove();
 		map = undefined;
-		marker = undefined;
 	});
 </script>
 

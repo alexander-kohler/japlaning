@@ -1,4 +1,10 @@
-import { getCurrentTripCity } from '$lib/trip-location';
+import {
+	accommodationGeocodeQueries,
+	cityFromItem,
+	displayNameFromItem,
+	getCurrentAccommodation
+} from '$lib/trip-location';
+import { splitNameAndLocation, type TravelItem } from '$lib/data';
 
 /** WMO weather interpretation codes used by Open-Meteo. */
 export function weatherLabel(code: number): string {
@@ -34,84 +40,62 @@ export type LocationInfo = {
 	label: string;
 	timezone: string;
 	city: string;
+	accommodationName: string;
+	address?: string;
+	start: string;
+	end: string;
+	accommodationId: string;
 };
 
-type GeocodeResult = {
-	id: number;
-	name: string;
-	latitude: number;
-	longitude: number;
-	country_code?: string;
-	admin1?: string;
-	country?: string;
-	timezone?: string;
+type PhotonFeature = {
+	geometry: { coordinates: [number, number] };
+	properties: {
+		name?: string;
+		street?: string;
+		city?: string;
+		state?: string;
+		country?: string;
+		countrycode?: string;
+	};
 };
 
-/** Overrides for itinerary labels that the geocoder mishandles. */
-const CITY_GEOCODE_ALIASES: Record<string, string> = {
-	'minami aso': 'Aso, Kumamoto',
-	nachikatsuura: 'Katsuura, Wakayama',
-	'sumida city / tokyo': 'Sumida, Tokyo'
-};
-
-/** Hardcoded city-center fallback (Shinjuku district center — not the stay address). */
-const SHINJUKU_CENTER: LocationInfo = {
-	latitude: 35.69115,
-	longitude: 139.70854,
+/** Fallback near first stay neighbourhood if geocoding fails entirely. */
+const SHINJUKU_FALLBACK: Omit<
+	LocationInfo,
+	'accommodationName' | 'start' | 'end' | 'accommodationId' | 'address'
+> = {
+	latitude: 35.708,
+	longitude: 139.725,
 	label: 'Shinjuku, Tokyo, Japan',
 	timezone: 'Asia/Tokyo',
 	city: 'Shinjuku'
 };
 
-function formatCityLabel(result: GeocodeResult, fallbackCity: string): string {
-	const parts = [result.name || fallbackCity, result.admin1, result.country].filter(Boolean);
-	return parts.join(', ');
-}
-
-function geocodeQueriesForCity(city: string): string[] {
-	const alias = CITY_GEOCODE_ALIASES[city.trim().toLowerCase()];
-	const base = alias ?? city.trim();
-	const parts = base
-		.split('/')
-		.map((part) => part.trim())
-		.filter(Boolean);
-
-	const queries: string[] = [];
-	const push = (q: string) => {
-		if (q && !queries.includes(q)) queries.push(q);
-	};
-
-	push(`${base}, Japan`);
-	push(base);
-	for (const part of parts) {
-		push(`${part}, Japan`);
-		push(part);
-	}
-
-	return queries;
-}
-
-async function searchGeocode(name: string): Promise<GeocodeResult | null> {
-	const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
-	url.searchParams.set('name', name);
-	url.searchParams.set('count', '5');
-	url.searchParams.set('language', 'en');
-	url.searchParams.set('format', 'json');
+async function geocodeQuery(query: string): Promise<{ lat: number; lon: number } | null> {
+	const url = new URL('https://photon.komoot.io/api/');
+	url.searchParams.set('q', query);
+	url.searchParams.set('limit', '3');
+	url.searchParams.set('lang', 'en');
 
 	const res = await fetch(url);
-	if (!res.ok) throw new Error('Geocoding request failed');
+	if (!res.ok) return null;
 
-	const data = (await res.json()) as { results?: GeocodeResult[] };
-	const results = data.results ?? [];
-	if (!results.length) return null;
+	const data = (await res.json()) as { features?: PhotonFeature[] };
+	const features = data.features ?? [];
+	const feature =
+		features.find((f) => f.properties.countrycode?.toUpperCase() === 'JP') ?? features[0];
+	if (!feature) return null;
 
-	return results.find((r) => r.country_code === 'JP') ?? results[0];
+	const [lon, lat] = feature.geometry.coordinates;
+	if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+	return { lat, lon };
 }
 
-/** Resolve a city name to its geographic center (never a street address). */
-export async function geocodeCity(city: string): Promise<GeocodeResult | null> {
-	for (const query of geocodeQueriesForCity(city)) {
-		const result = await searchGeocode(query);
+export async function geocodeAccommodation(
+	item: TravelItem
+): Promise<{ lat: number; lon: number } | null> {
+	for (const query of accommodationGeocodeQueries(item)) {
+		const result = await geocodeQuery(query);
 		if (result) return result;
 	}
 	return null;
@@ -131,6 +115,7 @@ export async function fetchWeather(lat: number, lon: number): Promise<WeatherCur
 	if (!res.ok) throw new Error('Weather request failed');
 
 	const data = (await res.json()) as {
+		timezone?: string;
 		current: {
 			temperature_2m: number;
 			relative_humidity_2m: number;
@@ -149,25 +134,39 @@ export async function fetchWeather(lat: number, lon: number): Promise<WeatherCur
 	};
 }
 
-/**
- * Current trip city, pinned at the city center from Open-Meteo geocoding.
- * Uses the itinerary city name only — never accommodation street addresses.
- */
-export async function resolveCurrentCityLocation(at: Date = new Date()): Promise<LocationInfo> {
-	const tripCity = getCurrentTripCity(at);
-	const city = tripCity?.city ?? 'Shinjuku';
+function locationLabel(item: TravelItem): string {
+	const { displayName, location } = splitNameAndLocation(item.name);
+	if (item.address) return `${displayName} · ${item.address}`;
+	if (location) return `${displayName}, ${location}`;
+	return displayName;
+}
 
-	const result = await geocodeCity(city);
-	if (!result) {
-		if (city === 'Shinjuku') return { ...SHINJUKU_CENTER };
-		throw new Error(`Could not geocode city: ${city}`);
+/**
+ * Current accommodation location + metadata.
+ * Pin is at the stay (address geocode), not the city centroid.
+ */
+export async function resolveCurrentAccommodationLocation(
+	at: Date = new Date()
+): Promise<LocationInfo> {
+	const item = getCurrentAccommodation(at);
+	if (!item) {
+		throw new Error('No accommodations on the itinerary');
 	}
 
+	const city = cityFromItem(item) || 'Japan';
+	const accommodationName = displayNameFromItem(item);
+	const coords = await geocodeAccommodation(item);
+
 	return {
-		latitude: result.latitude,
-		longitude: result.longitude,
-		label: formatCityLabel(result, city),
-		timezone: result.timezone || 'Asia/Tokyo',
-		city
+		latitude: coords?.lat ?? SHINJUKU_FALLBACK.latitude,
+		longitude: coords?.lon ?? SHINJUKU_FALLBACK.longitude,
+		label: locationLabel(item),
+		timezone: 'Asia/Tokyo',
+		city,
+		accommodationName,
+		address: item.address,
+		start: item.start,
+		end: item.end,
+		accommodationId: item.id
 	};
 }
