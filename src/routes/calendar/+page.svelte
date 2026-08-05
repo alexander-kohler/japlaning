@@ -55,6 +55,10 @@
 	const DATE_GAP = -4;
 	const DATE_PULL = CARD_GAP - DATE_GAP;
 	const DAY_MS = 1000 * 60 * 60 * 24;
+	/** Base min-height for a 1-night stay; each extra night adds EXTRA_DAY_PX. */
+	const ACCOMMODATION_BASE_MIN_PX = 96;
+	const ACCOMMODATION_EXTRA_DAY_PX = 72;
+	const JAPAN_TZ = 'Asia/Tokyo';
 
 	let tableSection: HTMLElement;
 	let isExporting = $state(false);
@@ -88,20 +92,12 @@
 		};
 	});
 
-	const tripStartMs = toStartOfDay(Math.min(...cardItems.map((item) => item.startMs)));
-	const tripEndMs = toStartOfDay(Math.max(...cardItems.map((item) => item.endMs)));
-	const tripDayCount = Math.round((tripEndMs - tripStartMs) / DAY_MS) + 1;
-
-	function initialSimDayIndex(): number {
-		const realToday = toStartOfDay(Date.now());
-		if (realToday >= tripStartMs && realToday <= tripEndMs) {
-			return Math.round((realToday - tripStartMs) / DAY_MS);
-		}
-		return 0;
-	}
-
-	let simDayIndex = $state(initialSimDayIndex());
-	const todayMs = $derived(tripStartMs + simDayIndex * DAY_MS);
+	/** Start-of-day ms for "today" in Japan, aligned with itinerary local date keys. */
+	const todayMs = toStartOfDay(
+		new Date(
+			`${new Date().toLocaleDateString('en-CA', { timeZone: JAPAN_TZ })}T12:00:00`
+		).getTime()
+	);
 
 	const rows: Row[] = buildRows(cardItems);
 
@@ -146,6 +142,21 @@
 
 	function isStayLike(item: CardItem): boolean {
 		return item.kind === 'accommodation' || isOvernight(item);
+	}
+
+	/** Nights covered by a stay (checkout morning counts as end of last night). */
+	function accommodationNights(item: CardItem): number {
+		return Math.max(
+			1,
+			Math.round((toStartOfDay(item.endMs) - toStartOfDay(item.startMs)) / DAY_MS)
+		);
+	}
+
+	function accommodationMinHeight(item: CardItem): string | undefined {
+		if (item.kind !== 'accommodation') return undefined;
+		const nights = accommodationNights(item);
+		const px = ACCOMMODATION_BASE_MIN_PX + (nights - 1) * ACCOMMODATION_EXTRA_DAY_PX;
+		return `${px}px`;
 	}
 
 	function formatDateLabel(ms: number): string {
@@ -402,33 +413,6 @@
 		</button>
 	</header>
 
-	<label
-		class="mb-4 flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:py-2.5"
-	>
-		<div class="flex items-center justify-between gap-3 sm:contents">
-			<span class="shrink-0 text-sm font-medium text-zinc-700">Simulate day</span>
-			<span
-				class="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-sky-600 tabular-nums sm:order-last"
-			>
-				<span class="h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-500/20" aria-hidden="true"
-				></span>
-				{formatDateLabel(todayMs)}
-			</span>
-		</div>
-		<input
-			class="min-w-0 w-full flex-1 touch-manipulation accent-sky-600 sm:w-auto"
-			type="range"
-			min="0"
-			max={tripDayCount - 1}
-			step="1"
-			value={simDayIndex}
-			oninput={(event) => {
-				simDayIndex = Number(event.currentTarget.value);
-			}}
-			aria-valuetext={formatDateLabel(todayMs)}
-		/>
-	</label>
-
 	<section
 		bind:this={tableSection}
 		class="relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100/80 py-2 pl-2 pr-1 shadow-sm sm:px-2.5 sm:pb-2.5"
@@ -490,6 +474,7 @@
 					{@const segment = row.item}
 					{@const rails = carRailForCard(segment.index)}
 					{@const isLastCard = segment.index === cardItems.length - 1}
+					{@const stayMinHeight = accommodationMinHeight(segment)}
 
 					<div class="relative flex items-center justify-end gap-1">
 						{#if segment.dateLabel && segment.dateDayKey !== null}
@@ -535,14 +520,15 @@
 					</div>
 
 					<article
-						class={`rounded-xl border border-zinc-200 bg-white shadow-sm ${
+						class={`flex flex-col rounded-xl border shadow-sm ${
 							segment.kind === 'accommodation'
-								? 'transition hover:border-zinc-300 hover:shadow'
-								: ''
+								? 'border-zinc-200 bg-white transition hover:border-zinc-300 hover:shadow'
+								: 'border-amber-200/90 bg-amber-50/80'
 						}`}
+						style={stayMinHeight ? `min-height: ${stayMinHeight}` : undefined}
 						title={`${segment.name} (${formatTimeRange(segment.start, segment.end)})`}
 					>
-						<div class="flex items-start gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
+						<div class="flex flex-1 items-start gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
 							{#if segment.kind === 'accommodation'}
 								<a
 									href={resolve('/accommodation/[id]', { id: segment.id })}
@@ -556,17 +542,19 @@
 										{thumbEmoji(segment.kind)}
 									</div>
 									<div class="min-w-0 flex-1">
-										<h3 class="text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base">
+										{#if segment.location}
+											<p class="text-[12px] font-medium leading-snug text-zinc-500 sm:text-sm">
+												{segment.location}
+											</p>
+										{/if}
+										<h3
+											class={`text-[13px] font-semibold leading-snug text-zinc-900 sm:text-base ${segment.location ? 'mt-0.5' : ''}`}
+										>
 											{segment.displayName}
 										</h3>
 										<p class="mt-0.5 text-[11px] leading-snug text-zinc-500 sm:text-xs">
 											{formatBookingDateRange(segment.start, segment.end, segment.kind)}
 										</p>
-										{#if segment.location || segment.kind}
-											<p class="mt-0.5 text-[11px] leading-snug text-zinc-400 sm:text-xs">
-												{[segment.location, kindLabel(segment.kind)].filter(Boolean).join(' · ')}
-											</p>
-										{/if}
 										{#if segment.activities.length}
 											<p class="mt-1 text-[11px] leading-snug text-sky-600 sm:text-xs">
 												{segment.activities.length}
