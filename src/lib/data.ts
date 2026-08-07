@@ -37,12 +37,6 @@ export const travelItems: {
 			address: '107-5 Wasedatsurumakichō, Shinjuku, Tokyo 162-0041, Japan',
 			activities: [
 				{
-					id: 'tokyo-tower',
-					name: 'Visit Tokyo Tower',
-					start: '2026-08-12T16:00',
-					end: '2026-08-12T17:00'
-				},
-				{
 					id: 'yanaka-ginza',
 					name: 'Yanaka Ginza shitamachi stroll (hidden gem)'
 				},
@@ -51,21 +45,12 @@ export const travelItems: {
 					name: 'Omoide Yokocho alley yakitori (Shinjuku)'
 				},
 				{
-					id: 'summer-comiket',
-					name: 'Summer Comiket 2026 (Tokyo Big Sight)',
-					start: '2026-08-15T10:00',
-					end: '2026-08-16T17:00'
-				},
-				{
 					id: 'nezu-museum',
 					name: 'Nezu Museum garden café (quiet gem)'
-				},
-				{
-					id: 'tokyo-skytree',
-					name: 'Tokyo Skytree'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://www.airbnb.de/trips/v1/1734930846050373477/ro/RESERVATION2_CHECKIN/HMNA8FMFNQ'
 		},
 		{
 			id: 'tokyo-matsuyama-flight',
@@ -99,7 +84,8 @@ export const travelItems: {
 					name: 'Dogo shopping arcade evening stroll in yukata'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://www.airbnb.de/trips/v1/1734931795705330119/ro/RESERVATION2_CHECKIN/HMJPT4ABZS'
 		},
 		{
 			id: 'fukuinn-takamatsu',
@@ -129,7 +115,8 @@ export const travelItems: {
 					name: 'Sanuki udon crawl around Takamatsu Station'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=KYTlMJtI5GBnFG4V&source=mytrips'
 		},
 		{
 			id: 'toyoko-inn-tokushima',
@@ -155,7 +142,8 @@ export const travelItems: {
 					name: 'Tokushima Central Park & castle ruins stroll'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=8rAEpFHGUZ4kmYu9&source=mytrips'
 		},
 		{
 			id: 'meriken-port-kobe',
@@ -187,7 +175,8 @@ export const travelItems: {
 					name: 'Kitano Ijinkan foreigner mansions'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=N3bs0xZps6pgdlVd&source=mytrips'
 		},
 		{
 			id: 'ibis-styles-kyoto',
@@ -221,7 +210,8 @@ export const travelItems: {
 					name: 'Kamogawa riverbank evening picnic'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=zu33VplkzKm4FKUd&source=mytrips'
 		},
 		{
 			id: 'comfort-hotel-tanabe',
@@ -243,7 +233,8 @@ export const travelItems: {
 					name: 'Ogigahama Beach sunset walk'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=t5ruzGGquetHNPK7&source=mytrips'
 		},
 		{
 			id: 'guesthouse-yata-tanabe',
@@ -261,7 +252,8 @@ export const travelItems: {
 					name: 'Takijiri-oji trailhead shrine blessing'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=Q8BXoEEtFQeD7tfZ&source=mytrips'
 		},
 		{
 			id: 'cottage-kirihata-tanabe',
@@ -283,7 +275,8 @@ export const travelItems: {
 					name: 'Yunomine Onsen public bath (UNESCO gem)'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=tQt0f7P2f60OwRf8&source=mytrips'
 		},
 		{
 			id: 'ikkyu-kobune',
@@ -305,7 +298,8 @@ export const travelItems: {
 					name: 'Quiet Kumano River riverside evening'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=37TXhogk1B5HuBcb&source=mytrips'
 		},
 		{
 			id: 'nachi-no-sato',
@@ -333,7 +327,8 @@ export const travelItems: {
 					end: '2026-09-06T08:30'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=iUIDTCVRfZFSnIZC&source=mytrips'
 		},
 		{
 			id: 'hoshi-no-yado-osaka',
@@ -359,7 +354,8 @@ export const travelItems: {
 					name: 'Shinsekai kushikatsu & Tsutenkaku'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=rXBOeH5JsvQyh7jX&source=mytrips'
 		},
 		{
 			id: 'ferry-osaka-fukuoka',
@@ -392,7 +388,8 @@ export const travelItems: {
 					name: 'Ohori Park lakeside walk'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=QzescB4tf5n6rYcx&source=mytrips'
 		},
 		{
 			id: 'grand-residence-tenjin',
@@ -412,7 +409,8 @@ export const travelItems: {
 					name: 'Tenjin underground shopping & evening wander'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=487B7GcY7w3bdDtp&source=mytrips'
 		},
 		{
 			id: 'simple-stay-beppu',
@@ -438,7 +436,8 @@ export const travelItems: {
 					name: 'Yufuin village day trip (quieter onsen town)'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=AVG0Vu2WFleT5UrX&source=mytrips'
 		},
 		{
 			id: 'shijin-minami-aso',
@@ -464,7 +463,8 @@ export const travelItems: {
 					name: 'Minami-Aso Railway scenic ride'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=JTf0bYsxus5emFGD&source=mytrips'
 		},
 		{
 			id: 'fav-kumamoto',
@@ -486,7 +486,8 @@ export const travelItems: {
 					name: 'Kumamoto tonkotsu ramen crawl (local gem)'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=laWEobO0lybwDcss&source=mytrips'
 		},
 		{
 			id: 'zee-haven-nagasaki',
@@ -512,7 +513,8 @@ export const travelItems: {
 					name: 'Dejima & Teramachi temple walk'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=MppZ2Gi7tV5sDFDI&source=mytrips'
 		},
 		{
 			id: 'lotus-village-fukuoka',
@@ -536,7 +538,8 @@ export const travelItems: {
 					name: 'Itoshima coastline cafés & beaches (hidden gem)'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=y8BkAUe1yT4tgEy0&source=mytrips'
 		},
 		{
 			id: 'b-hotel-hiroshima',
@@ -566,7 +569,8 @@ export const travelItems: {
 					name: 'Okonomimura okonomiyaki floors'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=W4ggJ1cztJLKjOz7&source=mytrips'
 		},
 		{
 			id: 'grand-base-kurashiki',
@@ -594,7 +598,8 @@ export const travelItems: {
 					name: 'Kurashiki canal boat ride'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=YBdmn9fUUzKT5v08&source=mytrips'
 		},
 		{
 			id: 'wayfarer-matsu-osaka',
@@ -628,7 +633,8 @@ export const travelItems: {
 					name: 'Osaka Castle Park morning walk'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=JJBkhgGMZfbapIFG&source=mytrips'
 		},
 		{
 			id: 'gee-haive-mishima',
@@ -654,7 +660,8 @@ export const travelItems: {
 					name: 'Rakujuen Park & small aquarium'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=uYg2fGRiabpZqwky&source=mytrips'
 		},
 		{
 			id: 'villa-omodaka-oguchi',
@@ -680,7 +687,8 @@ export const travelItems: {
 					name: 'Shuzenji Onsen village (Izu hidden gem)'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=8bgKPJGqgtREBCRv&source=mytrips'
 		},
 		{
 			id: 'view-odawara',
@@ -702,7 +710,8 @@ export const travelItems: {
 					name: 'Soga Plum Forest Park stroll (local gem)'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.en-gb.html?label=gen173nr-10CAEoggI46AdIM1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4At750NMGwAIB0gIkMDA4NWE1ZDItZDkxMy00ZWQ0LThmOGQtN2JjMDNjNDFlYmI52AIB4AIB&aid=304142&auth_key=viuc4vnVv5fqB1SK&source=mytrips'
 		},
 		{
 			id: 'skytreehouse-sumida',
@@ -738,7 +747,8 @@ export const travelItems: {
 					name: 'Sumida Aquarium under Skytree'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://www.airbnb.de/trips/v1/1702898543728210912/ro/RESERVATION2_CHECKIN/HMKMMEM9JR'
 		},
 		{
 			id: 'hedistar-narita',
@@ -760,7 +770,8 @@ export const travelItems: {
 					name: 'Sawara “Little Edo” canal town (hidden gem)'
 				}
 			],
-			bookingUrl: ''
+			bookingUrl:
+				'https://secure.booking.com/confirmation.de.html?label=gen173nr-10CAEoggI46AdIB1gEaDuIAQGYATO4AQfIAQzYAQPoAQH4AQGIAgGoAgG4AsG20dMGwAIB0gIkNTc3MzFmOWMtNjJkMS00NzdiLTk2OTQtNmU4YWEwNTUwMGI12AIB4AIB&sid=23fc0ae525e219e81c9f05eb864057f8&aid=304142&auth_key=RJps1AEy0ZV6r2ix&source=mytrips'
 		}
 	],
 	cars: [

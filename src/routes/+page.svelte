@@ -4,7 +4,13 @@
 	import LocationMap from '$lib/components/LocationMap.svelte';
 	import WeatherIcon from '$lib/components/WeatherIcon.svelte';
 	import { splitNameAndLocation, type TravelItem } from '$lib/data';
-	import { getTravelItemsForDay } from '$lib/trip-location';
+	import {
+		formatNextUpCountdown,
+		formatNextUpWhen,
+		getNextUp,
+		getTravelItemsForDay,
+		nextUpKindLabel
+	} from '$lib/trip-location';
 	import {
 		fetchWeather,
 		resolveCurrentAccommodationLocation,
@@ -71,6 +77,9 @@
 	);
 
 	const todayItems = $derived(data.authenticated ? getTravelItemsForDay(now) : []);
+	const nextUp = $derived(data.authenticated ? getNextUp(now) : null);
+	const nextUpCountdown = $derived(nextUp ? formatNextUpCountdown(now, nextUp) : '');
+	const nextUpWhen = $derived(nextUp ? formatNextUpWhen(nextUp, now) : '');
 
 	function kindLabel(kind: TravelItem['kind']): string {
 		if (kind === 'accommodation') return 'Stay';
@@ -136,9 +145,6 @@
 <main class="mx-auto max-w-7xl px-3 py-6 sm:px-4 md:px-6">
 	<header class="mb-6">
 		<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Current location</h1>
-		<p class="mt-1 text-sm text-zinc-500">
-			Map, Japan time, and weather for the current stay on the itinerary.
-		</p>
 	</header>
 
 	{#if statusMessage}
@@ -217,22 +223,18 @@
 	</div>
 
 	{#if data.authenticated}
-		<section class="mt-6" aria-label="Today on the itinerary">
-			<div class="mb-3 flex items-baseline justify-between gap-3">
-				<h2 class="text-lg font-semibold tracking-tight text-zinc-900">Today</h2>
-				<a
-					href={resolve('/calendar')}
-					class="text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
-				>
-					Full calendar
-				</a>
-			</div>
+		{#if todayItems.length > 0}
+			<section class="mt-6" aria-label="Today on the itinerary">
+				<div class="mb-3 flex items-baseline justify-between gap-3">
+					<h2 class="text-lg font-semibold tracking-tight text-zinc-900">Today</h2>
+					<a
+						href={resolve('/calendar')}
+						class="text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+					>
+						Full calendar
+					</a>
+				</div>
 
-			{#if todayItems.length === 0}
-				<p class="rounded-xl border border-zinc-200 bg-white px-4 py-5 text-sm text-zinc-500">
-					Nothing scheduled for today in Japan time.
-				</p>
-			{:else}
 				<ul class="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white">
 					{#each todayItems as item (item.id)}
 						{@const place = itemSubtitle(item)}
@@ -284,6 +286,54 @@
 						</li>
 					{/each}
 				</ul>
+			</section>
+		{/if}
+
+		<section class="mt-6" aria-label="Next up on the itinerary">
+			<div class="mb-3 flex items-baseline justify-between gap-3">
+				<h2 class="text-lg font-semibold tracking-tight text-zinc-900">Next up</h2>
+				{#if todayItems.length === 0}
+					<a
+						href={resolve('/calendar')}
+						class="text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+					>
+						Full calendar
+					</a>
+				{/if}
+			</div>
+			{#if nextUp}
+				<div class="rounded-xl border border-zinc-200 bg-white px-4 py-4 sm:px-5 sm:py-5">
+					<div class="flex flex-wrap items-start justify-between gap-3">
+						<div class="min-w-0">
+							<p class="text-xs font-medium uppercase tracking-wide text-zinc-400">
+								{nextUpKindLabel(nextUp.kind)}
+							</p>
+							{#if nextUp.accommodationId}
+								<a
+									href={resolve('/accommodation/[id]', { id: nextUp.accommodationId })}
+									class="mt-0.5 block text-lg font-medium text-zinc-900 hover:underline sm:text-xl"
+								>
+									{nextUp.title}
+								</a>
+							{:else}
+								<p class="mt-0.5 text-lg font-medium text-zinc-900 sm:text-xl">{nextUp.title}</p>
+							{/if}
+							{#if nextUp.subtitle}
+								<p class="mt-0.5 text-sm text-zinc-500">{nextUp.subtitle}</p>
+							{/if}
+						</div>
+						<div class="shrink-0 text-right">
+							<p class="text-lg font-semibold tabular-nums tracking-tight text-zinc-900 sm:text-xl">
+								{nextUpCountdown}
+							</p>
+							<p class="mt-0.5 text-sm tabular-nums text-zinc-500">{nextUpWhen}</p>
+						</div>
+					</div>
+				</div>
+			{:else}
+				<p class="rounded-xl border border-zinc-200 bg-white px-4 py-5 text-sm text-zinc-500">
+					Nothing left on the itinerary.
+				</p>
 			{/if}
 		</section>
 	{/if}
