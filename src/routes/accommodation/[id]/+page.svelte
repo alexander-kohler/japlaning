@@ -147,6 +147,11 @@
 								{#if when}
 									<p class="mt-0.5 text-xs text-zinc-500 sm:text-sm">{when}</p>
 								{/if}
+								{#if activity.notes}
+									<p class="mt-1 text-xs leading-relaxed text-zinc-400 sm:text-sm">
+										{activity.notes}
+									</p>
+								{/if}
 							</div>
 						</div>
 					</li>

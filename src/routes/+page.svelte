@@ -265,19 +265,24 @@
 							{#if activities.length > 0}
 								<ul class="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
 									{#each activities as activity (activity.id)}
-										<li class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-											<span class="text-zinc-700">{activity.name}</span>
-											{#if activity.start}
-												<span class="tabular-nums text-zinc-400">
-													{new Date(activity.start).toLocaleTimeString('en-GB', {
-														hour: '2-digit',
-														minute: '2-digit'
-													})}{#if activity.end}
-														–{new Date(activity.end).toLocaleTimeString('en-GB', {
+										<li class="text-sm">
+											<div class="flex flex-wrap items-baseline justify-between gap-2">
+												<span class="text-zinc-700">{activity.name}</span>
+												{#if activity.start}
+													<span class="tabular-nums text-zinc-400">
+														{new Date(activity.start).toLocaleTimeString('en-GB', {
 															hour: '2-digit',
 															minute: '2-digit'
-														})}{/if}
-												</span>
+														})}{#if activity.end}
+															–{new Date(activity.end).toLocaleTimeString('en-GB', {
+																hour: '2-digit',
+																minute: '2-digit'
+															})}{/if}
+													</span>
+												{/if}
+											</div>
+											{#if activity.notes}
+												<p class="mt-0.5 text-xs leading-relaxed text-zinc-400">{activity.notes}</p>
 											{/if}
 										</li>
 									{/each}

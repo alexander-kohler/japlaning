@@ -3,6 +3,7 @@ export type Activity = {
 	name: string;
 	start?: string;
 	end?: string;
+	notes?: string;
 };
 
 export type TravelItem = {
@@ -231,6 +232,12 @@ export const travelItems: {
 				{
 					id: 'ogigahama-beach',
 					name: 'Ogigahama Beach sunset walk'
+				},
+				{
+					id: 'shiogori-memorial',
+					name: 'Shiogori Salt-water Purification Memorial',
+					notes:
+						'A memorial in honor of this practice is at Ogigahama Beach in Tanabe City. Visitors are encouraged to try purifying their hands in the sea water before they begin their walk on the Kumano Kodo. A commemorative stamp is also here.'
 				}
 			],
 			bookingUrl:
