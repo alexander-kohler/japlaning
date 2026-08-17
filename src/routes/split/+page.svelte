@@ -24,6 +24,7 @@
 
 	let newPersonName = $state('');
 	let managingPeople = $state(false);
+	let expensePendingDelete = $state<Expense | null>(null);
 	let editingExpenseId = $state<string | null>(null);
 	let description = $state('');
 	let amount = $state('');
@@ -127,9 +128,14 @@
 	});
 
 	$effect(() => {
-		if (!managingPeople) return;
+		if (!managingPeople && !expensePendingDelete) return;
 		function onKeydown(event: KeyboardEvent) {
-			if (event.key === 'Escape') managingPeople = false;
+			if (event.key !== 'Escape') return;
+			if (expensePendingDelete) {
+				expensePendingDelete = null;
+				return;
+			}
+			managingPeople = false;
 		}
 		window.addEventListener('keydown', onKeydown);
 		return () => window.removeEventListener('keydown', onKeydown);
@@ -314,17 +320,29 @@
 		}
 	}
 
-	async function removeExpense(id: string): Promise<void> {
+	function requestRemoveExpense(expense: Expense): void {
+		expensePendingDelete = expense;
+	}
+
+	function cancelRemoveExpense(): void {
+		expensePendingDelete = null;
+	}
+
+	async function confirmRemoveExpense(): Promise<void> {
+		const expense = expensePendingDelete;
+		if (!expense) return;
+
 		saving = true;
 		formError = '';
 		try {
-			const response = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+			const response = await fetch(`/api/expenses/${expense.id}`, { method: 'DELETE' });
 			if (!response.ok) {
 				formError = await readError(response);
 				return;
 			}
-			expenses = expenses.filter((expense) => expense.id !== id);
-			if (editingExpenseId === id) resetExpenseForm();
+			expenses = expenses.filter((item) => item.id !== expense.id);
+			if (editingExpenseId === expense.id) resetExpenseForm();
+			expensePendingDelete = null;
 		} catch (error) {
 			console.error(error);
 			formError = 'Could not remove expense. Check the database connection.';
@@ -715,7 +733,7 @@
 											type="button"
 											class="text-sm text-zinc-400 hover:text-red-600 disabled:opacity-60"
 											disabled={saving}
-											onclick={() => void removeExpense(expense.id)}
+											onclick={() => requestRemoveExpense(expense)}
 										>
 											Remove
 										</button>
@@ -832,6 +850,76 @@
 					onclick={() => (managingPeople = false)}
 				>
 					Done
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if expensePendingDelete}
+	{@const expense = expensePendingDelete}
+	<div
+		class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/40 p-4 sm:items-center"
+		role="presentation"
+		onclick={(event) => {
+			if (event.target === event.currentTarget && !saving) cancelRemoveExpense();
+		}}
+	>
+		<div
+			class="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-5 shadow-lg"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="delete-expense-heading"
+			aria-describedby="delete-expense-desc"
+			tabindex="-1"
+		>
+			<div class="mb-4 flex items-start justify-between gap-3">
+				<div>
+					<h2 id="delete-expense-heading" class="text-lg font-semibold text-zinc-900">
+						Remove expense?
+					</h2>
+					<p id="delete-expense-desc" class="mt-1 text-sm text-zinc-500">
+						This can't be undone.
+					</p>
+				</div>
+				<button
+					type="button"
+					class="rounded-md px-2 py-1 text-sm text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-60"
+					aria-label="Close"
+					disabled={saving}
+					onclick={cancelRemoveExpense}
+				>
+					×
+				</button>
+			</div>
+
+			<div class="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-3">
+				<p class="font-medium text-zinc-900">{expense.description}</p>
+				<p class="mt-1 text-sm tabular-nums text-zinc-700">
+					{formatMoney(expense.amount, expense.currency)}
+					{#if expense.currency !== 'EUR'}
+						<span class="text-zinc-400">· {formatEur(expense.amountEur)}</span>
+					{/if}
+				</p>
+				<p class="mt-1 truncate text-sm text-zinc-500">{formatExpenseSplit(expense)}</p>
+			</div>
+
+			<div class="mt-5 flex flex-wrap justify-end gap-2">
+				<button
+					type="button"
+					class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:opacity-60"
+					disabled={saving}
+					onclick={cancelRemoveExpense}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					class="rounded-md border border-red-700 bg-red-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60"
+					disabled={saving}
+					onclick={() => void confirmRemoveExpense()}
+				>
+					{saving ? 'Removing…' : 'Remove'}
 				</button>
 			</div>
 		</div>
