@@ -27,6 +27,7 @@
 	let status = $state<'loading' | 'ready' | 'error'>('loading');
 	let statusMessage = $state('Finding current accommodation…');
 	let now = $state(new Date());
+	let mapTall = $state(false);
 
 	let clockId: ReturnType<typeof setInterval> | undefined;
 
@@ -143,8 +144,18 @@
 </svelte:head>
 
 <main class="mx-auto max-w-7xl px-3 py-6 sm:px-4 md:px-6">
-	<header class="mb-6">
-		<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Current location</h1>
+	<header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+		<h1 class="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+			Current location
+		</h1>
+		<button
+			type="button"
+			class="shrink-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+			aria-pressed={mapTall}
+			onclick={() => (mapTall = !mapTall)}
+		>
+			{mapTall ? 'Compact map' : 'Expand map'}
+		</button>
 	</header>
 
 	{#if statusMessage}
@@ -157,13 +168,12 @@
 	{/if}
 
 	<div class="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-		<section class="min-h-[320px] sm:min-h-[420px]" aria-label="Accommodation map">
+		<section
+			class={mapTall ? 'h-[calc(100dvh-9.5rem)] min-h-[320px]' : 'min-h-[320px] sm:min-h-[420px]'}
+			aria-label="Accommodation map"
+		>
 			{#if location}
-				<LocationMap
-					latitude={location.latitude}
-					longitude={location.longitude}
-					zoom={8}
-				/>
+				<LocationMap latitude={location.latitude} longitude={location.longitude} zoom={8} />
 			{:else}
 				<div
 					class="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-zinc-200 bg-[#f4f6f8] text-sm text-zinc-500"
@@ -235,7 +245,9 @@
 					</a>
 				</div>
 
-				<ul class="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+				<ul
+					class="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white"
+				>
 					{#each todayItems as item (item.id)}
 						{@const place = itemSubtitle(item)}
 						{@const activities = todaysActivities(item)}

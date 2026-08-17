@@ -32,6 +32,7 @@
 	let map: MaplibreMap | undefined;
 	let marker: MaplibreMarker | undefined;
 	let styleError = $state('');
+	let resizeObserver: ResizeObserver | undefined;
 
 	onMount(() => {
 		if (!mapEl) return;
@@ -65,6 +66,11 @@
 				console.error('MapLibre error', event.error);
 				styleError = event.error?.message ?? 'Map failed to load tiles';
 			});
+
+			resizeObserver = new ResizeObserver(() => {
+				instance.resize();
+			});
+			resizeObserver.observe(mapEl);
 		} catch (error) {
 			console.error(error);
 			styleError = error instanceof Error ? error.message : 'Map failed to load';
@@ -79,6 +85,8 @@
 	});
 
 	onDestroy(() => {
+		resizeObserver?.disconnect();
+		resizeObserver = undefined;
 		marker?.remove();
 		marker = undefined;
 		map?.remove();
