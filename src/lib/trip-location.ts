@@ -40,13 +40,7 @@ export function formatJapanDayMonth(isoLocal: string): string {
 }
 
 export type NextUpKind =
-	| 'check-in'
-	| 'check-out'
-	| 'flight'
-	| 'ferry'
-	| 'activity'
-	| 'car-pickup'
-	| 'car-return';
+	'check-in' | 'check-out' | 'flight' | 'ferry' | 'activity' | 'car-pickup' | 'car-return';
 
 export type NextUpEvent = {
 	id: string;
@@ -94,22 +88,8 @@ export function getNextUp(at: Date = new Date()): NextUpEvent | null {
 		const { displayName, location: place } = splitNameAndLocation(item.name);
 
 		if (item.kind === 'accommodation') {
-			consider(
-				`${item.id}:check-in`,
-				'check-in',
-				displayName,
-				place,
-				item.start,
-				item.id
-			);
-			consider(
-				`${item.id}:check-out`,
-				'check-out',
-				displayName,
-				place,
-				item.end,
-				item.id
-			);
+			consider(`${item.id}:check-in`, 'check-in', displayName, place, item.start, item.id);
+			consider(`${item.id}:check-out`, 'check-out', displayName, place, item.end, item.id);
 
 			for (const activity of item.activities ?? []) {
 				if (!activity.start) continue;
