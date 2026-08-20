@@ -21,6 +21,24 @@ function parseJapanLocalMs(isoLocal: string): number {
 	return new Date(`${base}+09:00`).getTime();
 }
 
+/** Format an itinerary timestamp as Japan-local clock time (HH:MM). */
+export function formatJapanTime(isoLocal: string): string {
+	return new Date(parseJapanLocalMs(isoLocal)).toLocaleTimeString('en-GB', {
+		hour: '2-digit',
+		minute: '2-digit',
+		timeZone: JAPAN_TZ
+	});
+}
+
+/** Format an itinerary timestamp as a short Japan-local day/month label. */
+export function formatJapanDayMonth(isoLocal: string): string {
+	return new Date(parseJapanLocalMs(isoLocal)).toLocaleDateString('en-GB', {
+		day: 'numeric',
+		month: 'short',
+		timeZone: JAPAN_TZ
+	});
+}
+
 export type NextUpKind =
 	| 'check-in'
 	| 'check-out'
@@ -178,7 +196,7 @@ export function formatNextUpWhen(event: NextUpEvent, at: Date = new Date()): str
 function accommodations(): TravelItem[] {
 	return travelItems.items
 		.filter((item) => item.kind === 'accommodation')
-		.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+		.sort((a, b) => parseJapanLocalMs(a.start) - parseJapanLocalMs(b.start));
 }
 
 export function cityFromItem(item: TravelItem): string {
@@ -227,7 +245,7 @@ export function getTravelItemsForDay(at: Date = new Date()): TravelItem[] {
 			const end = japanDayKey(item.end);
 			return day >= start && day <= end;
 		})
-		.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+		.sort((a, b) => parseJapanLocalMs(a.start) - parseJapanLocalMs(b.start));
 }
 
 /** Search queries to geocode an accommodation to a point on the map. */
