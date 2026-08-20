@@ -5,6 +5,8 @@
 	import WeatherIcon from '$lib/components/WeatherIcon.svelte';
 	import { splitNameAndLocation, type TravelItem } from '$lib/data';
 	import {
+		formatJapanDayMonth,
+		formatJapanTime,
 		formatNextUpCountdown,
 		formatNextUpWhen,
 		getNextUp,
@@ -88,38 +90,18 @@
 		return 'Flight';
 	}
 
+	/** Itinerary timestamps are Japan-local — always format in Asia/Tokyo. */
 	function formatItemWhen(item: TravelItem): string {
-		const start = new Date(item.start);
-		const end = new Date(item.end);
-
 		if (item.kind === 'accommodation') {
-			const startLabel = start.toLocaleDateString('en-GB', {
-				day: 'numeric',
-				month: 'short'
-			});
-			const endLabel = end.toLocaleDateString('en-GB', {
-				day: 'numeric',
-				month: 'short'
-			});
-			return `${startLabel} – ${endLabel}`;
+			return `${formatJapanDayMonth(item.start)} – ${formatJapanDayMonth(item.end)}`;
 		}
 
-		const startTime = start.toLocaleTimeString('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit'
-		});
-		const endTime = end.toLocaleTimeString('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit'
-		});
+		const startTime = formatJapanTime(item.start);
+		const endTime = formatJapanTime(item.end);
 		const sameDay = item.start.slice(0, 10) === item.end.slice(0, 10);
 		if (sameDay) return `${startTime} – ${endTime}`;
 
-		const endDay = end.toLocaleDateString('en-GB', {
-			day: 'numeric',
-			month: 'short'
-		});
-		return `${startTime} – ${endDay} ${endTime}`;
+		return `${startTime} – ${formatJapanDayMonth(item.end)} ${endTime}`;
 	}
 
 	function itemTitle(item: TravelItem): string {
@@ -282,14 +264,8 @@
 												<span class="text-zinc-700">{activity.name}</span>
 												{#if activity.start}
 													<span class="tabular-nums text-zinc-400">
-														{new Date(activity.start).toLocaleTimeString('en-GB', {
-															hour: '2-digit',
-															minute: '2-digit'
-														})}{#if activity.end}
-															–{new Date(activity.end).toLocaleTimeString('en-GB', {
-																hour: '2-digit',
-																minute: '2-digit'
-															})}{/if}
+														{formatJapanTime(activity.start)}{#if activity.end}
+															–{formatJapanTime(activity.end)}{/if}
 													</span>
 												{/if}
 											</div>
