@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
+	import { onMount, untrack } from 'svelte';
 	import {
 		convertToEur,
 		currencyLabel,
@@ -10,14 +11,19 @@
 	} from '$lib/currency';
 	import { computeBalances, computeSettlements, type Expense, type Person } from '$lib/expenses';
 
+	const FALLBACK_CURRENCIES: Currency[] = [
+		{ iso_code: 'EUR', name: 'Euro', symbol: '€' },
+		{ iso_code: 'JPY', name: 'Japanese Yen', symbol: '¥' }
+	];
+
 	let { data } = $props();
 
-	let people = $state<Person[]>([]);
-	let expenses = $state<Expense[]>([]);
-	let persistence = $state<'turso' | 'local'>('local');
-	let currencies = $state<Currency[]>([]);
+	// Writable derived: local assigns (add person/expense) stick until load data refreshes.
+	let people = $derived(data.people);
+	let expenses = $derived(data.expenses);
+	let persistence = $derived(data.persistence);
+	let currencies = $state<Currency[]>(FALLBACK_CURRENCIES);
 	let currenciesError = $state('');
-	let currenciesLoading = $state(true);
 	let formError = $state('');
 	let converting = $state(false);
 	let saving = $state(false);
@@ -30,8 +36,8 @@
 	let amount = $state('');
 	let currency = $state('EUR');
 	let occurredAt = $state(toDatetimeLocalValue(new Date()));
-	let paidBy = $state('');
-	let splitAmong = $state<string[]>([]);
+	let paidBy = $state(untrack(() => data.people[0]?.id ?? ''));
+	let splitAmong = $state<string[]>(untrack(() => data.people.map((person) => person.id)));
 	let expenseFormEl = $state<HTMLFormElement | null>(null);
 
 	const balances = $derived(computeBalances(people, expenses));
@@ -92,24 +98,10 @@
 		return [...groups.values()];
 	}
 
-	$effect(() => {
-		people = data.people;
-		expenses = data.expenses;
-		persistence = data.persistence;
-	});
-
-	// Seed form defaults separately so paidBy/splitAmong updates after save
-	// don't re-run the data sync and wipe locally added expenses.
-	$effect(() => {
-		if (!paidBy && people[0]) paidBy = people[0].id;
-		if (!splitAmong.length && people.length) {
-			splitAmong = people.map((person) => person.id);
-		}
-	});
-
 	onMount(async () => {
 		try {
-			currencies = await fetchCurrencies();
+			const loaded = await fetchCurrencies();
+			if (loaded.length) currencies = loaded;
 			if (!currencies.some((c) => c.iso_code === currency)) {
 				currency = currencies.some((c) => c.iso_code === 'EUR')
 					? 'EUR'
@@ -118,12 +110,7 @@
 		} catch (error) {
 			console.error(error);
 			currenciesError = 'Could not load currencies from Frankfurter. Using local EUR / JPY list.';
-			currencies = [
-				{ iso_code: 'EUR', name: 'Euro', symbol: '€' },
-				{ iso_code: 'JPY', name: 'Japanese Yen', symbol: '¥' }
-			];
-		} finally {
-			currenciesLoading = false;
+			currencies = FALLBACK_CURRENCIES;
 		}
 	});
 
@@ -173,6 +160,7 @@
 			splitAmong = [...splitAmong, payload.person.id];
 			if (!paidBy) paidBy = payload.person.id;
 			newPersonName = '';
+			void invalidateAll();
 		} catch (error) {
 			console.error(error);
 			formError = 'Could not save person. Check the database connection.';
@@ -204,6 +192,7 @@
 			people = people.filter((p) => p.id !== id);
 			splitAmong = splitAmong.filter((personId) => personId !== id);
 			if (paidBy === id) paidBy = people[0]?.id ?? '';
+			void invalidateAll();
 		} catch (error) {
 			console.error(error);
 			formError = 'Could not remove person. Check the database connection.';
@@ -273,14 +262,40 @@
 		const desc = description.trim();
 		const parsedAmount = Number(amount);
 		const when = new Date(occurredAt);
+		const code = (currency || 'EUR').toUpperCase();
+
+		if (!people.length) {
+			formError = 'Add people before saving an expense.';
+			return;
+		}
+		if (!desc) {
+			formError = 'Description is required.';
+			return;
+		}
+		if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+			formError = 'Enter a valid amount.';
+			return;
+		}
+		if (!paidBy) {
+			formError = 'Select who paid.';
+			return;
+		}
+		if (!splitAmong.length) {
+			formError = 'Select at least one person to split among.';
+			return;
+		}
+		if (Number.isNaN(when.getTime())) {
+			formError = 'Enter a valid date and time.';
+			return;
+		}
 
 		converting = true;
 		try {
-			const amountEur = await convertToEur(parsedAmount, currency);
+			const amountEur = await convertToEur(parsedAmount, code);
 			const body = {
 				description: desc,
 				amount: parsedAmount,
-				currency: currency.toUpperCase(),
+				currency: code,
 				amountEur,
 				paidBy,
 				splitAmong,
@@ -312,9 +327,10 @@
 				);
 			}
 			resetExpenseForm();
+			void invalidateAll();
 		} catch (error) {
 			console.error(error);
-			formError = `Could not save expense or convert ${currency} to EUR.`;
+			formError = `Could not save expense or convert ${code} to EUR.`;
 		} finally {
 			converting = false;
 		}
@@ -343,6 +359,7 @@
 			expenses = expenses.filter((item) => item.id !== expense.id);
 			if (editingExpenseId === expense.id) resetExpenseForm();
 			expensePendingDelete = null;
+			void invalidateAll();
 		} catch (error) {
 			console.error(error);
 			formError = 'Could not remove expense. Check the database connection.';
@@ -370,6 +387,7 @@
 			occurredAt = toDatetimeLocalValue(new Date());
 			paidBy = '';
 			splitAmong = [];
+			void invalidateAll();
 		} catch (error) {
 			console.error(error);
 			formError = 'Could not clear data. Check the database connection.';
@@ -484,15 +502,11 @@
 						aria-label="Currency"
 						bind:value={currency}
 						required
-						disabled={currenciesLoading || !people.length || converting}
+						disabled={!people.length || converting}
 					>
-						{#if currenciesLoading}
-							<option value={currency}>Loading…</option>
-						{:else}
-							{#each currencies as c (c.iso_code)}
-								<option value={c.iso_code}>{currencyLabel(c)}</option>
-							{/each}
-						{/if}
+						{#each currencies as c (c.iso_code)}
+							<option value={c.iso_code}>{currencyLabel(c)}</option>
+						{/each}
 					</select>
 
 					<input
@@ -525,15 +539,6 @@
 						<span class="text-zinc-400" aria-hidden="true">→</span>
 
 						{#if people.length}
-							<input
-								class="sr-only"
-								type="text"
-								name="splitAmong"
-								value={splitAmong.length ? 'ok' : ''}
-								required
-								tabindex="-1"
-								aria-label="Select at least one person to split among"
-							/>
 							<div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
 								{#each people as person (person.id)}
 									<label
