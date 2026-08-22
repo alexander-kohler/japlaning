@@ -121,10 +121,11 @@
 			const code = node.getAttribute('data-code');
 			const isVisited = code ? set.has(code) : false;
 			node.classList.toggle('is-visited', isVisited);
-			node.style.fill = isVisited ? 'var(--scratch-visited)' : 'var(--scratch-foil)';
-			node.style.stroke = isVisited
-				? 'var(--scratch-visited-stroke)'
-				: 'var(--scratch-foil-stroke)';
+			// Clear any presentation attributes so CSS classes fully control fill.
+			node.style.removeProperty('fill');
+			node.style.removeProperty('stroke');
+			node.removeAttribute('fill');
+			node.removeAttribute('stroke');
 		});
 	}
 
@@ -184,8 +185,15 @@
 	}
 
 	.scratch-map-canvas :global(.geolonia-svg-map .prefecture) {
+		fill: var(--scratch-foil) !important;
+		stroke: var(--scratch-foil-stroke) !important;
 		stroke-width: 1.25;
 		stroke-linejoin: round;
+	}
+
+	.scratch-map-canvas :global(.geolonia-svg-map .prefecture.is-visited) {
+		fill: var(--scratch-visited) !important;
+		stroke: var(--scratch-visited-stroke) !important;
 	}
 
 	.scratch-map-canvas :global(.geolonia-svg-map .prefecture:hover:not(.is-visited)) {

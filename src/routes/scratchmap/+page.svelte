@@ -7,8 +7,9 @@
 	let visitedCodes = $derived(data.visitedCodes);
 	let saving = $state(false);
 	let saveError = $state('');
-	let pending = new Map<string, boolean>();
+	let dirty = $state(false);
 	let flushTimer: ReturnType<typeof setTimeout> | undefined;
+	let saveSeq = 0;
 
 	const visitedSet = $derived(new Set(visitedCodes));
 	const visitedList = $derived(PREFECTURES.filter((prefecture) => visitedSet.has(prefecture.code)));
@@ -20,46 +21,49 @@
 		if (visited) next.add(code);
 		else next.delete(code);
 		visitedCodes = [...next].sort((a, b) => Number(a) - Number(b));
-		queueSave(code, visited);
+		queueSave();
 	}
 
-	function queueSave(code: string, visited: boolean): void {
-		pending.set(code, visited);
+	function queueSave(): void {
+		dirty = true;
 		saveError = '';
 		if (flushTimer) clearTimeout(flushTimer);
 		flushTimer = setTimeout(() => {
-			void flushPending();
-		}, 180);
+			void flushSave();
+		}, 220);
 	}
 
-	async function flushPending(): Promise<void> {
-		if (pending.size === 0) return;
-		const batch = [...pending.entries()];
-		pending.clear();
+	async function flushSave(): Promise<void> {
+		if (!dirty) return;
+		dirty = false;
+		const codesSnapshot = [...visitedCodes];
+		const seq = ++saveSeq;
 		saving = true;
 
 		try {
-			for (const [code, visited] of batch) {
-				const res = await fetch('/api/visited-prefectures', {
-					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ code, visited })
-				});
-				if (!res.ok) {
-					const message = await res.text();
-					throw new Error(message || 'Save failed');
-				}
-				const body = (await res.json()) as { codes: string[] };
+			const res = await fetch('/api/visited-prefectures', {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ codes: codesSnapshot })
+			});
+			if (!res.ok) {
+				const message = await res.text();
+				throw new Error(message || 'Save failed');
+			}
+			const body = (await res.json()) as { codes: string[] };
+			// Only apply server echo if this is still the latest save and user hasn't edited again.
+			if (seq === saveSeq && !dirty) {
 				visitedCodes = body.codes;
 			}
 		} catch (err) {
 			saveError = err instanceof Error ? err.message : 'Could not save changes';
+			dirty = true;
 		} finally {
 			saving = false;
-			if (pending.size > 0) {
+			if (dirty) {
 				flushTimer = setTimeout(() => {
-					void flushPending();
-				}, 120);
+					void flushSave();
+				}, 160);
 			}
 		}
 	}
@@ -68,21 +72,8 @@
 		if (visitedCodes.length === 0) return;
 		if (!confirm('Clear all scratched prefectures?')) return;
 
-		saving = true;
-		saveError = '';
-		try {
-			const res = await fetch('/api/visited-prefectures', {
-				method: 'PUT',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ codes: [] })
-			});
-			if (!res.ok) throw new Error('Clear failed');
-			visitedCodes = [];
-		} catch {
-			saveError = 'Could not clear the map';
-		} finally {
-			saving = false;
-		}
+		visitedCodes = [];
+		queueSave();
 	}
 
 	function unvisit(code: string): void {
