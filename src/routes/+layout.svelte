@@ -9,6 +9,7 @@
 	const links = [
 		{ href: '/' as const, label: 'Home', public: true },
 		{ href: '/calendar' as const, label: 'Calendar', public: false },
+		{ href: '/scratchmap' as const, label: 'Scratch map', public: false },
 		{ href: '/split' as const, label: 'Cost split', public: false }
 	];
 
