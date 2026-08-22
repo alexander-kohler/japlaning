@@ -48,6 +48,10 @@ export async function ensureSchema(): Promise<Client> {
 						expense_id TEXT NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
 						person_id TEXT NOT NULL REFERENCES people(id),
 						PRIMARY KEY (expense_id, person_id)
+					)`,
+					`CREATE TABLE IF NOT EXISTS visited_prefectures (
+						code TEXT PRIMARY KEY,
+						visited_at TEXT NOT NULL
 					)`
 				],
 				'write'
