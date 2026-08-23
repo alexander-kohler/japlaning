@@ -52,6 +52,13 @@ export async function ensureSchema(): Promise<Client> {
 					`CREATE TABLE IF NOT EXISTS visited_prefectures (
 						code TEXT PRIMARY KEY,
 						visited_at TEXT NOT NULL
+					)`,
+					`CREATE TABLE IF NOT EXISTS poke_lid_stamps (
+						lid_id TEXT PRIMARY KEY,
+						stamped_at TEXT NOT NULL,
+						note TEXT,
+						image_mime TEXT,
+						image_data TEXT
 					)`
 				],
 				'write'
