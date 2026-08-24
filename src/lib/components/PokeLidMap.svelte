@@ -2,17 +2,18 @@
 	import { onDestroy, onMount } from 'svelte';
 	import {
 		Map,
+		Marker,
 		NavigationControl,
 		Popup,
 		setWorkerUrl,
 		type GeoJSONSource,
 		type Map as MaplibreMap,
-		type MapLayerMouseEvent
+		type MapLayerMouseEvent,
+		type Marker as MaplibreMarker
 	} from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-	import type { PokeLid } from '$lib/poke-lids';
-	import { pokemonLabel } from '$lib/poke-lids';
+	import type { DisplayLid } from '$lib/poke-lids';
 
 	setWorkerUrl(maplibreWorkerUrl);
 
@@ -27,12 +28,18 @@
 		lids,
 		stampedIds,
 		selectedId = null,
-		onSelect
+		placing = false,
+		draftPoint = null,
+		onSelect,
+		onMapClick
 	}: {
-		lids: PokeLid[];
+		lids: DisplayLid[];
 		stampedIds: Set<string>;
 		selectedId?: string | null;
+		placing?: boolean;
+		draftPoint?: { lat: number; lng: number } | null;
 		onSelect: (id: string) => void;
+		onMapClick?: (point: { lat: number; lng: number }) => void;
 	} = $props();
 
 	let mapEl: HTMLDivElement | undefined = $state();
@@ -40,9 +47,27 @@
 	let styleError = $state('');
 	let resizeObserver: ResizeObserver | undefined;
 	let popup: Popup | undefined;
+	let draftMarker: MaplibreMarker | undefined;
+
+	/** Mutable mirror so MapLibre handlers always see current props. */
+	const live: {
+		placing: boolean;
+		onSelect: (id: string) => void;
+		onMapClick?: (point: { lat: number; lng: number }) => void;
+	} = {
+		placing: false,
+		onSelect: () => {},
+		onMapClick: undefined
+	};
+
+	$effect(() => {
+		live.placing = placing;
+		live.onSelect = onSelect;
+		live.onMapClick = onMapClick;
+	});
 
 	function toGeoJson(
-		list: PokeLid[],
+		list: DisplayLid[],
 		stamped: Set<string>
 	): {
 		type: 'FeatureCollection';
@@ -52,6 +77,7 @@
 			properties: {
 				id: string;
 				stamped: number;
+				kind: string;
 				title: string;
 				place: string;
 				prefecture: string;
@@ -67,8 +93,9 @@
 				properties: {
 					id: lid.id,
 					stamped: stamped.has(lid.id) ? 1 : 0,
-					title: pokemonLabel(lid),
-					place: lid.cityEn || lid.city,
+					kind: lid.kind,
+					title: lid.title,
+					place: lid.subtitle,
 					prefecture: lid.prefecture
 				},
 				geometry: {
@@ -85,10 +112,29 @@
 	}
 
 	function flyToSelected(id: string | null | undefined): void {
-		if (!map || !id) return;
+		if (!map || !id || placing) return;
 		const lid = lids.find((item) => item.id === id);
 		if (!lid) return;
 		map.easeTo({ center: [lid.lng, lid.lat], zoom: Math.max(map.getZoom(), 10), duration: 500 });
+	}
+
+	function syncDraftMarker(point: { lat: number; lng: number } | null): void {
+		if (!map) return;
+		if (!point) {
+			draftMarker?.remove();
+			draftMarker = undefined;
+			return;
+		}
+		if (!draftMarker) {
+			const el = document.createElement('div');
+			el.className = 'custom-lid-draft-marker';
+			el.setAttribute('aria-hidden', 'true');
+			draftMarker = new Marker({ element: el, anchor: 'center' })
+				.setLngLat([point.lng, point.lat])
+				.addTo(map);
+			return;
+		}
+		draftMarker.setLngLat([point.lng, point.lat]);
 	}
 
 	onMount(() => {
@@ -160,6 +206,8 @@
 							'case',
 							['==', ['get', 'stamped'], 1],
 							'#ca8a04',
+							['==', ['get', 'kind'], 'custom'],
+							'#2563eb',
 							'#ef4444'
 						],
 						'circle-radius': 7,
@@ -185,6 +233,7 @@
 			});
 
 			instance.on('click', CLUSTER_LAYER, (event) => {
+				if (live.placing) return;
 				const feature = event.features?.[0];
 				if (!feature || feature.geometry.type !== 'Point') return;
 				const clusterId = feature.properties?.cluster_id as number | undefined;
@@ -197,23 +246,30 @@
 			});
 
 			const selectFromEvent = (event: MapLayerMouseEvent) => {
+				if (live.placing) return;
 				const feature = event.features?.[0];
 				const id = feature?.properties?.id;
 				if (typeof id === 'string' || typeof id === 'number') {
-					onSelect(String(id));
+					live.onSelect(String(id));
 				}
 			};
 
 			instance.on('click', UNCLUSTERED, selectFromEvent);
 			instance.on('click', STAMPED, selectFromEvent);
 
+			instance.on('click', (event) => {
+				if (!live.placing || !live.onMapClick) return;
+				live.onMapClick({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+			});
+
 			instance.on('mouseenter', CLUSTER_LAYER, () => {
-				instance.getCanvas().style.cursor = 'pointer';
+				if (!live.placing) instance.getCanvas().style.cursor = 'pointer';
 			});
 			instance.on('mouseleave', CLUSTER_LAYER, () => {
-				instance.getCanvas().style.cursor = '';
+				instance.getCanvas().style.cursor = live.placing ? 'crosshair' : '';
 			});
 			instance.on('mouseenter', UNCLUSTERED, (event) => {
+				if (live.placing) return;
 				instance.getCanvas().style.cursor = 'pointer';
 				const feature = event.features?.[0];
 				if (!feature || feature.geometry.type !== 'Point' || !popup) return;
@@ -221,15 +277,17 @@
 				const title = String(feature.properties?.title ?? '');
 				const place = String(feature.properties?.place ?? '');
 				const pref = String(feature.properties?.prefecture ?? '');
+				const kind = String(feature.properties?.kind ?? 'pokemon');
+				const kindLabel = kind === 'custom' ? 'Custom' : pref;
 				popup
 					.setLngLat(coords)
 					.setHTML(
-						`<strong>${title}</strong><div class="poke-lid-popup-meta">${pref} · ${place}</div>`
+						`<strong>${title}</strong><div class="poke-lid-popup-meta">${kindLabel} · ${place}</div>`
 					)
 					.addTo(instance);
 			});
 			instance.on('mouseleave', UNCLUSTERED, () => {
-				instance.getCanvas().style.cursor = '';
+				instance.getCanvas().style.cursor = live.placing ? 'crosshair' : '';
 				popup?.remove();
 			});
 
@@ -258,11 +316,22 @@
 		flyToSelected(selectedId);
 	});
 
+	$effect(() => {
+		syncDraftMarker(draftPoint);
+	});
+
+	$effect(() => {
+		if (!map) return;
+		map.getCanvas().style.cursor = placing ? 'crosshair' : '';
+	});
+
 	onDestroy(() => {
 		resizeObserver?.disconnect();
 		resizeObserver = undefined;
 		popup?.remove();
 		popup = undefined;
+		draftMarker?.remove();
+		draftMarker = undefined;
 		map?.remove();
 		map = undefined;
 	});
@@ -273,8 +342,15 @@
 		bind:this={mapEl}
 		class="h-full min-h-[320px] w-full overflow-hidden rounded-xl border border-zinc-200/80 bg-[#f4f6f8]"
 		role="img"
-		aria-label="Map of Poké Lids across Japan"
+		aria-label="Map of manhole lids across Japan"
 	></div>
+	{#if placing}
+		<p
+			class="pointer-events-none absolute inset-x-3 top-3 rounded-md bg-zinc-900/90 px-3 py-2 text-xs text-white shadow"
+		>
+			Click the map to place a custom manhole lid
+		</p>
+	{/if}
 	{#if styleError}
 		<p
 			class="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-white/90 px-3 py-2 text-xs text-red-700 shadow"
@@ -298,5 +374,15 @@
 	:global(.poke-lid-popup-meta) {
 		margin-top: 0.15rem;
 		color: #71717a;
+	}
+
+	:global(.custom-lid-draft-marker) {
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: #2563eb;
+		border: 3px solid #fff;
+		box-shadow: 0 1px 6px rgb(0 0 0 / 0.35);
+		pointer-events: none;
 	}
 </style>

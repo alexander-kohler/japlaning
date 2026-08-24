@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
-import { getPokeLid } from '$lib/poke-lids';
 import { deletePokeLidStamp, getPokeLidStamp } from '$lib/server/poke-lid-stamps';
+import { lidExists } from '$lib/server/lid-lookup';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	const lidId = params.id?.trim() ?? '';
-	if (!lidId || !getPokeLid(lidId)) {
-		throw error(404, 'Poké Lid not found');
+	if (!lidId || !(await lidExists(lidId))) {
+		throw error(404, 'Manhole lid not found');
 	}
 
 	const includeImage = url.searchParams.get('image') === '1';
@@ -20,8 +20,8 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 export const DELETE: RequestHandler = async ({ params }) => {
 	const lidId = params.id?.trim() ?? '';
-	if (!lidId || !getPokeLid(lidId)) {
-		throw error(404, 'Poké Lid not found');
+	if (!lidId || !(await lidExists(lidId))) {
+		throw error(404, 'Manhole lid not found');
 	}
 
 	const deleted = await deletePokeLidStamp(lidId);
