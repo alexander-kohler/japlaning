@@ -189,21 +189,36 @@ export function displayNameFromItem(item: TravelItem): string {
 
 /**
  * Current accommodation for a given instant.
- * Active stay that Japan calendar day; before the trip → first; after → last.
+ * Prefers the stay whose check-in..check-out window contains `at`.
+ * On transition days (checkout + next check-in), uses times so the
+ * destination wins after leaving the previous hotel.
+ * Before the trip → first; after → last.
  */
 export function getCurrentAccommodation(at: Date = new Date()): TravelItem | null {
 	const stays = accommodations();
 	if (!stays.length) return null;
 
+	const nowMs = at.getTime();
 	const day = japanDayKey(at);
 
-	const active = stays.find((item) => {
+	// Exact stay window (check-in through check-out timestamps).
+	const inStay = stays.find((item) => {
+		const start = parseJapanLocalMs(item.start);
+		const end = parseJapanLocalMs(item.end);
+		return nowMs >= start && nowMs <= end;
+	});
+	if (inStay) return inStay;
+
+	const dayMatches = stays.filter((item) => {
 		const start = japanDayKey(item.start);
 		const end = japanDayKey(item.end);
 		return day >= start && day <= end;
 	});
 
-	if (active) return active;
+	// Between checkout and the next check-in on an overlap day → next stay.
+	if (dayMatches.length > 0) {
+		return dayMatches[dayMatches.length - 1];
+	}
 
 	if (day < japanDayKey(stays[0].start)) {
 		return stays[0];
