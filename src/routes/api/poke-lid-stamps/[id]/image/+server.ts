@@ -1,12 +1,12 @@
 import { error } from '@sveltejs/kit';
-import { getPokeLid } from '$lib/poke-lids';
 import { getPokeLidStamp } from '$lib/server/poke-lid-stamps';
+import { lidExists } from '$lib/server/lid-lookup';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const lidId = params.id?.trim() ?? '';
-	if (!lidId || !getPokeLid(lidId)) {
-		throw error(404, 'Poké Lid not found');
+	if (!lidId || !(await lidExists(lidId))) {
+		throw error(404, 'Manhole lid not found');
 	}
 
 	const stamp = await getPokeLidStamp(lidId, true);

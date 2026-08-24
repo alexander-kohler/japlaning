@@ -59,6 +59,16 @@ export async function ensureSchema(): Promise<Client> {
 						note TEXT,
 						image_mime TEXT,
 						image_data TEXT
+					)`,
+					`CREATE TABLE IF NOT EXISTS custom_manhole_lids (
+						id TEXT PRIMARY KEY,
+						name TEXT NOT NULL,
+						description TEXT,
+						address TEXT,
+						prefecture TEXT,
+						lat REAL NOT NULL,
+						lng REAL NOT NULL,
+						created_at TEXT NOT NULL
 					)`
 				],
 				'write'

@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
-import { getPokeLid } from '$lib/poke-lids';
 import { listPokeLidStamps, upsertPokeLidStamp } from '$lib/server/poke-lid-stamps';
+import { lidExists } from '$lib/server/lid-lookup';
 import type { RequestHandler } from './$types';
 
 const MAX_IMAGE_CHARS = 900_000; // ~675KB base64 ≈ comfortably under common row limits
@@ -21,8 +21,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	};
 
 	const lidId = body.lidId?.trim() ?? '';
-	if (!lidId || !getPokeLid(lidId)) {
-		throw error(400, 'Unknown Poké Lid id');
+	if (!lidId || !(await lidExists(lidId))) {
+		throw error(400, 'Unknown manhole lid id');
 	}
 
 	if (body.imageData != null) {
