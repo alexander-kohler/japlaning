@@ -24,6 +24,7 @@ export function customLidTitle(lid: CustomManholeLid): string {
 }
 
 export function customLidPlace(lid: CustomManholeLid): string {
-	const parts = [lid.prefecture, lid.address].filter(Boolean);
-	return parts.length > 0 ? parts.join(' · ') : 'Custom location';
+	if (lid.address?.trim()) return lid.address.trim();
+	if (lid.prefecture?.trim()) return lid.prefecture.trim();
+	return 'Custom location';
 }

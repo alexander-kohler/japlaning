@@ -84,15 +84,14 @@
 	const grouped = $derived.by(() => {
 		const groups = new Map<string, DisplayLid[]>();
 		for (const lid of filteredLids) {
-			const key = lid.kind === 'custom' ? `Custom · ${lid.prefecture}` : lid.prefecture;
+			const key = lid.kind === 'custom' ? 'Custom' : lid.prefecture;
 			const list = groups.get(key) ?? [];
 			list.push(lid);
 			groups.set(key, list);
 		}
 		return [...groups.entries()].sort(([a], [b]) => {
-			const aCustom = a.startsWith('Custom');
-			const bCustom = b.startsWith('Custom');
-			if (aCustom !== bCustom) return aCustom ? -1 : 1;
+			if (a === 'Custom') return -1;
+			if (b === 'Custom') return 1;
 			return a.localeCompare(b);
 		});
 	});
@@ -455,9 +454,16 @@
 							</p>
 							<h2 class="mt-1 text-lg font-semibold text-zinc-900">{selected.title}</h2>
 							<p class="mt-0.5 text-sm text-zinc-600">
-								{selected.prefecture} · {selected.subtitle}
+								{#if selected.kind === 'custom'}
+									{selected.prefecture}
+									{#if selected.address && selected.address !== selected.prefecture}
+										· {selected.address}
+									{/if}
+								{:else}
+									{selected.prefecture} · {selected.subtitle}
+								{/if}
 							</p>
-							{#if selected.address}
+							{#if selected.kind === 'pokemon' && selected.address}
 								<p class="mt-1 text-xs text-zinc-500">{selected.address}</p>
 							{/if}
 							{#if selected.description}
@@ -689,7 +695,12 @@
 														selectedId === lid.id ? 'text-zinc-300' : 'text-zinc-500'
 													}`}
 												>
-													{lid.subtitle}
+													{#if lid.kind === 'custom' && lid.prefecture !== 'Custom'}
+														{lid.prefecture}
+														{#if lid.address} · {lid.address}{/if}
+													{:else}
+														{lid.subtitle}
+													{/if}
 												</span>
 											</span>
 										</button>
