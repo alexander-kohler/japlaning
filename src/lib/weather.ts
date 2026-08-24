@@ -95,10 +95,44 @@ const SHINJUKU_FALLBACK = {
 	city: 'Shinjuku'
 };
 
-async function geocodeQuery(query: string): Promise<{ lat: number; lon: number } | null> {
+/** Normalize place names for loose matching (Kōbe → kobe, drop punctuation). */
+function normalizePlace(value: string): string {
+	return value
+		.normalize('NFD')
+		.replace(/\p{M}/gu, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '');
+}
+
+/**
+ * True when a Photon hit looks like it belongs to the itinerary city.
+ * Avoids e.g. "Toyoko Inn Tokushima …" resolving to Toyoko Inn Tokyo.
+ */
+function featureMatchesCity(feature: PhotonFeature, city: string): boolean {
+	const wantedParts = city
+		.split(/[/|,]/)
+		.map((part) => normalizePlace(part))
+		.filter((part) => part.length >= 3);
+
+	if (wantedParts.length === 0) return true;
+
+	const props = feature.properties;
+	const haystacks = [props.city, props.state, props.name, props.street]
+		.filter((part): part is string => Boolean(part))
+		.map(normalizePlace);
+
+	return wantedParts.some((part) =>
+		haystacks.some((hay) => hay === part || hay.includes(part))
+	);
+}
+
+async function geocodeQuery(
+	query: string,
+	expectedCity?: string
+): Promise<{ lat: number; lon: number } | null> {
 	const url = new URL('https://photon.komoot.io/api/');
 	url.searchParams.set('q', query);
-	url.searchParams.set('limit', '3');
+	url.searchParams.set('limit', '5');
 	url.searchParams.set('lang', 'en');
 
 	const res = await fetch(url);
@@ -106,8 +140,12 @@ async function geocodeQuery(query: string): Promise<{ lat: number; lon: number }
 
 	const data = (await res.json()) as { features?: PhotonFeature[] };
 	const features = data.features ?? [];
-	const feature =
-		features.find((f) => f.properties.countrycode?.toUpperCase() === 'JP') ?? features[0];
+	const inJapan = features.filter((f) => f.properties.countrycode?.toUpperCase() === 'JP');
+	const pool = inJapan.length > 0 ? inJapan : features;
+
+	const feature = expectedCity
+		? (pool.find((f) => featureMatchesCity(f, expectedCity)) ?? null)
+		: (pool[0] ?? null);
 	if (!feature) return null;
 
 	const [lon, lat] = feature.geometry.coordinates;
@@ -118,8 +156,9 @@ async function geocodeQuery(query: string): Promise<{ lat: number; lon: number }
 export async function geocodeAccommodation(
 	item: TravelItem
 ): Promise<{ lat: number; lon: number } | null> {
+	const city = cityFromItem(item);
 	for (const query of accommodationGeocodeQueries(item)) {
-		const result = await geocodeQuery(query);
+		const result = await geocodeQuery(query, city || undefined);
 		if (result) return result;
 	}
 	return null;
