@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { afterNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { tick } from 'svelte';
 	import {
 		splitNameAndLocation,
 		travelItems,
@@ -50,6 +52,7 @@
 		lastIndex: number;
 	};
 
+	const TODAY_ANCHOR_ID = 'calendar-today';
 	const CARD_GAP = 12;
 	/** Visual gap above/below standalone date separator rows. */
 	const DATE_GAP = -4;
@@ -94,9 +97,7 @@
 
 	/** Start-of-day ms for "today" in Japan, aligned with itinerary local date keys. */
 	const todayMs = toStartOfDay(
-		new Date(
-			`${new Date().toLocaleDateString('en-CA', { timeZone: JAPAN_TZ })}T12:00:00`
-		).getTime()
+		new Date(`${new Date().toLocaleDateString('en-CA', { timeZone: JAPAN_TZ })}T12:00:00`).getTime()
 	);
 
 	const rows: Row[] = buildRows(cardItems);
@@ -250,6 +251,25 @@
 	const todayCardId = $derived(
 		todayAlreadyLabeled ? undefined : cardItems.find((item) => cardCoversToday(item))?.id
 	);
+
+	/** First row that represents today, used as the scroll target. */
+	const todayAnchorKey = $derived.by(() => {
+		for (const row of rows) {
+			if (row.type === 'date' && row.dayKey === todayMs) return row.id;
+			if (row.type === 'card' && row.item.dateDayKey === todayMs) return row.item.id;
+		}
+		return todayCardId;
+	});
+
+	afterNavigate(() => {
+		void tick().then(() => {
+			document.getElementById(TODAY_ANCHOR_ID)?.scrollIntoView({
+				behavior: 'auto',
+				block: 'start',
+				inline: 'nearest'
+			});
+		});
+	});
 
 	function formatCompactDateTime(value: string): string {
 		return new Date(value).toLocaleString('en-GB', {
@@ -428,7 +448,11 @@
 					{@const dateRails = carRailForDateBefore(row.beforeIndex)}
 					{@const current = isCurrentDay(row.dayKey)}
 					{@const parts = formatDateParts(row.dayKey)}
-					<div class="flex items-center justify-end gap-1" style={`margin-block: -${DATE_PULL}px;`}>
+					<div
+						id={row.id === todayAnchorKey ? TODAY_ANCHOR_ID : undefined}
+						class="flex scroll-mt-4 items-center justify-end gap-1"
+						style={`margin-block: -${DATE_PULL}px;`}
+					>
 						{#if current}
 							<span
 								class="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-500/20"
@@ -476,7 +500,10 @@
 					{@const isLastCard = segment.index === cardItems.length - 1}
 					{@const stayMinHeight = accommodationMinHeight(segment)}
 
-					<div class="relative flex items-center justify-end gap-1">
+					<div
+						id={segment.id === todayAnchorKey ? TODAY_ANCHOR_ID : undefined}
+						class="relative flex scroll-mt-4 items-center justify-end gap-1"
+					>
 						{#if segment.dateLabel && segment.dateDayKey !== null}
 							{@const current = isCurrentDay(segment.dateDayKey)}
 							{@const parts = formatDateParts(segment.dateDayKey)}
