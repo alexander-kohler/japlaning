@@ -34,6 +34,45 @@ export function createId(): string {
 	return crypto.randomUUID();
 }
 
+/** Local calendar day (YYYY-MM-DD) for an expense timestamp. */
+export function expenseDateKey(iso: string): string {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return 'unknown';
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Newest `createdAt` first. Invalid timestamps sink to the end. */
+export function compareExpensesNewestFirst(a: Expense, b: Expense): number {
+	const aMs = new Date(a.createdAt).getTime();
+	const bMs = new Date(b.createdAt).getTime();
+	const aValid = Number.isFinite(aMs);
+	const bValid = Number.isFinite(bMs);
+	if (aValid && bValid && aMs !== bMs) return bMs - aMs;
+	if (aValid !== bValid) return aValid ? -1 : 1;
+	return b.id.localeCompare(a.id);
+}
+
+/**
+ * Group expenses by local calendar day, newest day first.
+ * Within each day, the newest entry is first.
+ */
+export function groupExpensesByDate(list: Expense[]): { key: string; expenses: Expense[] }[] {
+	const groups = new Map<string, Expense[]>();
+
+	for (const expense of [...list].sort(compareExpensesNewestFirst)) {
+		const key = expenseDateKey(expense.createdAt);
+		const existing = groups.get(key);
+		if (existing) {
+			existing.push(expense);
+		} else {
+			groups.set(key, [expense]);
+		}
+	}
+
+	return [...groups.entries()].map(([key, expenses]) => ({ key, expenses }));
+}
+
 /**
  * Net balance per person in EUR.
  * For each expense, payer is credited the full EUR amount;
