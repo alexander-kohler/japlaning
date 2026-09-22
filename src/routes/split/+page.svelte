@@ -9,7 +9,14 @@
 		formatMoney,
 		type Currency
 	} from '$lib/currency';
-	import { computeBalances, computeSettlements, type Expense, type Person } from '$lib/expenses';
+	import {
+		compareExpensesNewestFirst,
+		computeBalances,
+		computeSettlements,
+		groupExpensesByDate,
+		type Expense,
+		type Person
+	} from '$lib/expenses';
 
 	const FALLBACK_CURRENCIES: Currency[] = [
 		{ iso_code: 'EUR', name: 'Euro', symbol: '€' },
@@ -47,7 +54,12 @@
 			.filter((expense) => !isPersonToPersonPayment(expense))
 			.reduce((sum, expense) => sum + (expense.amountEur || 0), 0)
 	);
-	const expensesByDate = $derived(groupExpensesByDate(expenses));
+	const expensesByDate = $derived(
+		groupExpensesByDate(expenses).map((group) => ({
+			...group,
+			label: formatExpenseDay(group.expenses[0]?.createdAt ?? '')
+		}))
+	);
 
 	/** A paid B only — settlement/transfer, not shared spending. */
 	function isPersonToPersonPayment(expense: Expense): boolean {
@@ -57,13 +69,6 @@
 	function toDatetimeLocalValue(date: Date): string {
 		const pad = (n: number) => String(n).padStart(2, '0');
 		return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-	}
-
-	function expenseDateKey(iso: string): string {
-		const date = new Date(iso);
-		if (Number.isNaN(date.getTime())) return 'unknown';
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 	}
 
 	function formatExpenseDay(iso: string): string {
@@ -76,26 +81,13 @@
 		}).format(date);
 	}
 
-	function groupExpensesByDate(
-		list: Expense[]
-	): { key: string; label: string; expenses: Expense[] }[] {
-		const groups = new Map<string, { key: string; label: string; expenses: Expense[] }>();
-
-		for (const expense of list) {
-			const key = expenseDateKey(expense.createdAt);
-			const existing = groups.get(key);
-			if (existing) {
-				existing.expenses.push(expense);
-			} else {
-				groups.set(key, {
-					key,
-					label: formatExpenseDay(expense.createdAt),
-					expenses: [expense]
-				});
-			}
-		}
-
-		return [...groups.values()];
+	function formatExpenseTime(iso: string): string {
+		const date = new Date(iso);
+		if (Number.isNaN(date.getTime())) return '';
+		return new Intl.DateTimeFormat(undefined, {
+			hour: '2-digit',
+			minute: '2-digit'
+		}).format(date);
 	}
 
 	onMount(async () => {
@@ -320,11 +312,9 @@
 			if (editingExpenseId) {
 				expenses = expenses
 					.map((expense) => (expense.id === payload.expense.id ? payload.expense : expense))
-					.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+					.sort(compareExpensesNewestFirst);
 			} else {
-				expenses = [payload.expense, ...expenses].sort((a, b) =>
-					b.createdAt.localeCompare(a.createdAt)
-				);
+				expenses = [payload.expense, ...expenses].sort(compareExpensesNewestFirst);
 			}
 			resetExpenseForm();
 			void invalidateAll();
@@ -704,6 +694,7 @@
 							class="divide-y divide-zinc-100 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
 						>
 							{#each group.expenses as expense (expense.id)}
+								{@const time = formatExpenseTime(expense.createdAt)}
 								<li
 									class={`flex gap-3 px-4 py-3.5 ${
 										editingExpenseId === expense.id ? 'bg-sky-50/60' : ''
@@ -722,6 +713,10 @@
 											</p>
 										</div>
 										<p class="mt-1 truncate text-sm text-zinc-500">
+											{#if time}
+												<span class="tabular-nums">{time}</span>
+												<span class="text-zinc-300"> · </span>
+											{/if}
 											{formatExpenseSplit(expense)}
 										</p>
 									</div>
@@ -883,9 +878,7 @@
 					<h2 id="delete-expense-heading" class="text-lg font-semibold text-zinc-900">
 						Remove expense?
 					</h2>
-					<p id="delete-expense-desc" class="mt-1 text-sm text-zinc-500">
-						This can't be undone.
-					</p>
+					<p id="delete-expense-desc" class="mt-1 text-sm text-zinc-500">This can't be undone.</p>
 				</div>
 				<button
 					type="button"
