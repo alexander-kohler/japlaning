@@ -18,6 +18,11 @@ type RateResponse = {
 
 export const ALLOWED_CURRENCIES = new Set(['EUR', 'JPY']);
 
+/** Yen while the traveler is in Japan; euro before the trip and after returning. */
+export function currencyForLocation(inJapan: boolean): 'EUR' | 'JPY' {
+	return inJapan ? 'JPY' : 'EUR';
+}
+
 let currenciesCache: Currency[] | null = null;
 const rateToEurCache = new Map<string, number>();
 

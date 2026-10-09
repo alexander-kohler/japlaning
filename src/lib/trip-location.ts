@@ -1,4 +1,4 @@
-import { splitNameAndLocation, travelItems, type TravelItem } from '$lib/data';
+import { splitNameAndLocation, travelItems, type TravelItem } from './data.ts';
 
 const JAPAN_TZ = 'Asia/Tokyo';
 
@@ -177,6 +177,36 @@ function accommodations(): TravelItem[] {
 	return travelItems.items
 		.filter((item) => item.kind === 'accommodation')
 		.sort((a, b) => parseJapanLocalMs(a.start) - parseJapanLocalMs(b.start));
+}
+
+/**
+ * True while `at` falls inside the Japan itinerary, from the first departure
+ * or check-in through the final check-out. Gaps between stays still count:
+ * the traveler is in Japan until the trip ends. Outside that window the
+ * default currency stays euro.
+ */
+export function isLocationInJapan(at: Date = new Date()): boolean {
+	let start = Infinity;
+	let end = -Infinity;
+
+	const consider = (startLocal: string, endLocal: string) => {
+		const startMs = parseJapanLocalMs(startLocal);
+		const endMs = parseJapanLocalMs(endLocal);
+		if (!Number.isNaN(startMs) && startMs < start) start = startMs;
+		if (!Number.isNaN(endMs) && endMs > end) end = endMs;
+	};
+
+	for (const item of travelItems.items) {
+		consider(item.start, item.end);
+	}
+	for (const car of travelItems.cars) {
+		consider(car.start, car.end);
+	}
+
+	if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
+
+	const now = at.getTime();
+	return now >= start && now <= end;
 }
 
 export function cityFromItem(item: TravelItem): string {

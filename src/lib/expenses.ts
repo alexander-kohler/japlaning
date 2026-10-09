@@ -109,6 +109,24 @@ export function computeBalances(people: Person[], expenses: Expense[]): Balance[
 }
 
 /**
+ * Person who currently owes the most (most negative net balance).
+ * Ignores balances within half a cent of zero. Ties keep the earlier person.
+ * Returns null when nobody owes money.
+ */
+export function personWhoOwesMost(balances: Balance[]): string | null {
+	let debtor: Balance | null = null;
+
+	for (const balance of balances) {
+		if (balance.netEur >= -0.005) continue;
+		if (!debtor || balance.netEur < debtor.netEur) {
+			debtor = balance;
+		}
+	}
+
+	return debtor?.personId ?? null;
+}
+
+/**
  * Greedy settlement: match largest debtors to largest creditors
  * until all balances are cleared (within 1 cent).
  */
