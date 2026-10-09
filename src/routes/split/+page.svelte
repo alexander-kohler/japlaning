@@ -3,6 +3,7 @@
 	import { onMount, untrack } from 'svelte';
 	import {
 		convertToEur,
+		currencyForLocation,
 		currencyLabel,
 		fetchCurrencies,
 		formatEur,
@@ -14,9 +15,11 @@
 		computeBalances,
 		computeSettlements,
 		groupExpensesByDate,
+		personWhoOwesMost,
 		type Expense,
 		type Person
 	} from '$lib/expenses';
+	import { isLocationInJapan } from '$lib/trip-location';
 
 	const FALLBACK_CURRENCIES: Currency[] = [
 		{ iso_code: 'EUR', name: 'Euro', symbol: '€' },
@@ -41,9 +44,16 @@
 	let editingExpenseId = $state<string | null>(null);
 	let description = $state('');
 	let amount = $state('');
-	let currency = $state('EUR');
+	let currency = $state<string>(untrack(() => currencyForLocation(isLocationInJapan())));
+	let currencyTouched = $state(false);
 	let occurredAt = $state(toDatetimeLocalValue(new Date()));
-	let paidBy = $state(untrack(() => data.people[0]?.id ?? ''));
+	let paidBy = $state(
+		untrack(
+			() =>
+				personWhoOwesMost(computeBalances(data.people, data.expenses)) ?? data.people[0]?.id ?? ''
+		)
+	);
+	let payerTouched = $state(false);
 	let splitAmong = $state<string[]>(untrack(() => data.people.map((person) => person.id)));
 	let expenseFormEl = $state<HTMLFormElement | null>(null);
 
@@ -90,20 +100,44 @@
 		}).format(date);
 	}
 
+	function suggestedCurrency(): string {
+		const preferred = currencyForLocation(isLocationInJapan());
+		if (currencies.some((c) => c.iso_code === preferred)) return preferred;
+		return (
+			currencies.find((c) => c.iso_code === 'EUR')?.iso_code ?? currencies[0]?.iso_code ?? 'EUR'
+		);
+	}
+
+	function suggestedPayer(): string {
+		return personWhoOwesMost(balances) ?? people[0]?.id ?? '';
+	}
+
 	onMount(async () => {
 		try {
 			const loaded = await fetchCurrencies();
 			if (loaded.length) currencies = loaded;
 			if (!currencies.some((c) => c.iso_code === currency)) {
-				currency = currencies.some((c) => c.iso_code === 'EUR')
-					? 'EUR'
-					: (currencies[0]?.iso_code ?? 'EUR');
+				currency = suggestedCurrency();
 			}
 		} catch (error) {
 			console.error(error);
 			currenciesError = 'Could not load currencies from Frankfurter. Using local EUR / JPY list.';
 			currencies = FALLBACK_CURRENCIES;
 		}
+	});
+
+	// Keep the blank expense form pointed at the biggest debtor and the local currency
+	// until the traveler edits those fields or opens an existing expense.
+	$effect(() => {
+		if (editingExpenseId || payerTouched) return;
+		const next = suggestedPayer();
+		if (paidBy !== next) paidBy = next;
+	});
+
+	$effect(() => {
+		if (editingExpenseId || currencyTouched) return;
+		const next = suggestedCurrency();
+		if (currency !== next) currency = next;
 	});
 
 	$effect(() => {
@@ -183,7 +217,7 @@
 
 			people = people.filter((p) => p.id !== id);
 			splitAmong = splitAmong.filter((personId) => personId !== id);
-			if (paidBy === id) paidBy = people[0]?.id ?? '';
+			if (paidBy === id) paidBy = suggestedPayer();
 			void invalidateAll();
 		} catch (error) {
 			console.error(error);
@@ -228,7 +262,10 @@
 		description = '';
 		amount = '';
 		occurredAt = toDatetimeLocalValue(new Date());
-		paidBy = people[0]?.id ?? '';
+		currencyTouched = false;
+		payerTouched = false;
+		currency = suggestedCurrency();
+		paidBy = suggestedPayer();
 		splitAmong = people.map((person) => person.id);
 	}
 
@@ -375,6 +412,9 @@
 			description = '';
 			amount = '';
 			occurredAt = toDatetimeLocalValue(new Date());
+			currencyTouched = false;
+			payerTouched = false;
+			currency = suggestedCurrency();
 			paidBy = '';
 			splitAmong = [];
 			void invalidateAll();
@@ -491,6 +531,7 @@
 						name="currency"
 						aria-label="Currency"
 						bind:value={currency}
+						onchange={() => (currencyTouched = true)}
 						required
 						disabled={!people.length || converting}
 					>
@@ -515,6 +556,7 @@
 							name="paidBy"
 							aria-label="Paid by"
 							bind:value={paidBy}
+							onchange={() => (payerTouched = true)}
 							required
 							disabled={!people.length || converting}
 						>

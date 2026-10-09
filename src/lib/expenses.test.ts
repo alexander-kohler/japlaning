@@ -4,6 +4,8 @@ import {
 	compareExpensesNewestFirst,
 	expenseDateKey,
 	groupExpensesByDate,
+	personWhoOwesMost,
+	type Balance,
 	type Expense
 } from './expenses.ts';
 
@@ -37,6 +39,36 @@ describe('groupExpensesByDate', () => {
 		);
 		assert.equal(grouped[0].key, expenseDateKey('2026-09-19T20:00:00.000Z'));
 		assert.equal(grouped[1].key, expenseDateKey('2026-09-18T22:00:00.000Z'));
+	});
+
+	it('selects the person who owes the most', () => {
+		const balances: Balance[] = [
+			{ personId: 'aya', name: 'Aya', netEur: 40 },
+			{ personId: 'ben', name: 'Ben', netEur: -10 },
+			{ personId: 'chris', name: 'Chris', netEur: -25 }
+		];
+
+		assert.equal(personWhoOwesMost(balances), 'chris');
+	});
+
+	it('keeps the earlier person when two people owe the same amount', () => {
+		const balances: Balance[] = [
+			{ personId: 'aya', name: 'Aya', netEur: -10 },
+			{ personId: 'ben', name: 'Ben', netEur: -10 }
+		];
+
+		assert.equal(personWhoOwesMost(balances), 'aya');
+	});
+
+	it('returns null when nobody owes money', () => {
+		assert.equal(
+			personWhoOwesMost([
+				{ personId: 'aya', name: 'Aya', netEur: 0 },
+				{ personId: 'ben', name: 'Ben', netEur: 12 }
+			]),
+			null
+		);
+		assert.equal(personWhoOwesMost([{ personId: 'aya', name: 'Aya', netEur: -0.004 }]), null);
 	});
 
 	it('keeps a later timestamp first even when the source list is oldest-first', () => {
