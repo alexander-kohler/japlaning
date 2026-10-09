@@ -128,16 +128,16 @@
 
 	// Keep the blank expense form pointed at the biggest debtor and the local currency
 	// until the traveler edits those fields or opens an existing expense.
+	// These effects must not read paidBy/currency: a user change would retrigger them
+	// and snap the select back before the "touched" flag is visible.
 	$effect(() => {
 		if (editingExpenseId || payerTouched) return;
-		const next = suggestedPayer();
-		if (paidBy !== next) paidBy = next;
+		paidBy = suggestedPayer();
 	});
 
 	$effect(() => {
 		if (editingExpenseId || currencyTouched) return;
-		const next = suggestedCurrency();
-		if (currency !== next) currency = next;
+		currency = suggestedCurrency();
 	});
 
 	$effect(() => {
@@ -530,8 +530,11 @@
 						class="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-500"
 						name="currency"
 						aria-label="Currency"
-						bind:value={currency}
-						onchange={() => (currencyTouched = true)}
+						value={currency}
+						onchange={(event) => {
+							currencyTouched = true;
+							currency = event.currentTarget.value;
+						}}
 						required
 						disabled={!people.length || converting}
 					>
@@ -555,8 +558,11 @@
 							class="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-500 sm:flex-none"
 							name="paidBy"
 							aria-label="Paid by"
-							bind:value={paidBy}
-							onchange={() => (payerTouched = true)}
+							value={paidBy}
+							onchange={(event) => {
+								payerTouched = true;
+								paidBy = event.currentTarget.value;
+							}}
 							required
 							disabled={!people.length || converting}
 						>
